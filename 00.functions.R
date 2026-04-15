@@ -24,7 +24,7 @@ library(metafor)
 
 
 # Univariate Imputation under MAR
-run_univariate_imputation <- function(data, theta_col = "log_RR2", se_col = "se_RR2", m = 1000, new_version = FALSE) {
+run_univariate_imputation <- function(data, theta_col = "log_RR2", se_col = "se_RR2", m = 1000, new_version = FALSE, method.re = "REML") {
   
   # Find reported and unreported indexes
   rep_idx_start <- which(!is.na(data[[theta_col]]))
@@ -44,7 +44,7 @@ run_univariate_imputation <- function(data, theta_col = "log_RR2", se_col = "se_
   unrep_idx <- (n_rep + 1):K
   
   # Fit REML on the reported data (Naive Estimate)
-  res_naive <- rma(yi = data_rep[[theta_col]], sei = data_rep[[se_col]], method = "REML")
+  res_naive <- rma(yi = data_rep[[theta_col]], sei = data_rep[[se_col]], method = method.re)
   theta_MA <- as.numeric(res_naive$beta)
   tau2_hat <- as.numeric(res_naive$tau2)
   SE2_mean <- res_naive$se^2
@@ -90,7 +90,7 @@ run_univariate_imputation <- function(data, theta_col = "log_RR2", se_col = "se_
 }
 
 #  Importance Sampling 
-adj_univariate <- function(mi_results, delta = 0.5, select_type = "zscore") {
+adj_univariate <- function(mi_results, delta = 0.5, select_type = "zscore", method.re = "REML") {
 
   draws        <- mi_results$draws
   data_ordered <- mi_results$data_ordered
@@ -114,9 +114,9 @@ if (select_type == "zscore") {
   # rma on each complete dataset 
   fits <- lapply(seq_len(M), function(m) {
     d <- data_ordered
-    d[[theta_col]][unrep_idx] <- draws[m, ]
+    d[[theta_col]][unrep_idx] <- draws[m, ] #complete df
     tryCatch(
-      rma(yi = d[[theta_col]], sei = d[[se_col]], method = "REML"),
+      rma(yi = d[[theta_col]], sei = d[[se_col]], method = method.re),
       error = function(e) NULL
     )
   })
@@ -203,7 +203,7 @@ if (select_type == "zscore") {
 ## Bivariate functions 
 # ----------------------------
 
-run_bivariate_imputation <- function(data, theta_cols, se_cols, rho_w = 0.7, m = 1000, new_version = FALSE) {
+run_bivariate_imputation <- function(data, theta_cols, se_cols, rho_w = 0.7, m = 1000, new_version = FALSE, method.re = "REML") {
   
   K <- nrow(data)
   
@@ -243,7 +243,7 @@ run_bivariate_imputation <- function(data, theta_cols, se_cols, rho_w = 0.7, m =
   res_naive <- rma.mv(yi, V = V_rep, 
                       mods = ~ outcome - 1, 
                       random = ~ outcome | study_id, struct = "UN",  # true effects varies for each study id (heterogeneity)
-                      data = alternated.vector_rep, method = "REML", 
+                      data = alternated.vector_rep, method = method.re, 
                       control=list(rel.tol=1e-8, maxiter=1000))
   
   # Construct Total Covariance Matrix Sigma
@@ -300,7 +300,7 @@ run_bivariate_imputation <- function(data, theta_cols, se_cols, rho_w = 0.7, m =
 
 
 
-adj_bivariate <- function(mi_results, delta = 0.5, select_type = "zscore") {
+adj_bivariate <- function(mi_results, delta = 0.5, select_type = "zscore", method.re = "REML") {
 
   draws <- mi_results$draws
   alternated.vector <- mi_results$alternated.vector
@@ -336,7 +336,7 @@ adj_bivariate <- function(mi_results, delta = 0.5, select_type = "zscore") {
     tryCatch( 
       rma.mv(yi, V = V_full, mods = ~ outcome - 1,
              random = ~ outcome | study_id, struct = "UN",
-             data = d, method = "REML",
+             data = d, method = method.re,
              control = list(rel.tol = 1e-8, maxiter = 1000)),
       error = function(e) NULL
     )
@@ -518,14 +518,14 @@ impose_orb <- function(data, p1 = 0.2, delta_sim = 0.5, select_type = "zscore") 
     E_s1 <- theta1 / sqrt((2/n_arm) + tau2_1) #expected score to define teoreticcal alpha
   } else if (select_type == "effect") {
     s1 <- data$O1_yi 
-    E_s1 <- theta1 #in here is directly the true value
+    E_s1 <- theta1 # if we do selection on effect, the exp value is directly the true value
   } else {
     stop("select_type must be 'zscore' or 'effect'")
   }
   
   target_reported <- 1 - p1
   
-  # Avoid logit of 1 or 0 if p1 is extreme (this should never happen)
+  # Avoid logit of 1 or 0 if p1 is extreme (this should never happen in the code)
   if(target_reported >= 1) target_reported <- 0.999 
   if(target_reported <= 0) target_reported <- 0.001
   

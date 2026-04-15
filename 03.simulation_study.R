@@ -1,5 +1,5 @@
 source("00.functions.R")
-set.seed(2026)
+set.seed(222)
 
 
 
@@ -202,7 +202,6 @@ bias <- colMeans(sub[, c("full", "naive.uni", "uni", "uni_new")], na.rm = TRUE) 
              time_min  = round(sub$time_min[1], 2))
 }))
 
-cat("\n── Bias & timing by scenario ──\n")
 print(summary_tbl, row.names = FALSE)
 
 
@@ -337,11 +336,11 @@ results_df <- do.call(rbind, results_list)
 simulation_end <- Sys.time()
 
 bias_results <- colMeans(results_df, na.rm = TRUE) - true_theta
-print("--- Bias Results (delta = 0) ---")
 print(round(bias_results, 5))
 
-cat("\nTotal Parallel Execution Time:", 
-    difftime(simulation_end, simulation_start, units = "mins"), "minutes\n")
+
+# see the time
+difftime(simulation_end, simulation_start, units = "mins"), "minutes\n")
 
 
 
@@ -445,17 +444,41 @@ object <- profvis({
 })
 
 #adj_univariate --> 4.3 secs
-# adj_bivariate --> 9.5 secs
+# adj_bivariate --> 9.0 secs
 
-# so each one of the replicates take 21 secs (with the 1000 IS)
+# so each one of the replicates take 15 secs (with the 1000 IS)
 
-# but we want to do 1900 replications --> 21.3 seconds $\times$ 1900 replicates = 11 hrs 
-
-
+# but we want to do 1900 replications --> 15 seconds $\times$ 1900 replicates =  a lot
 
 
 
 
+# RESULTS USING PM:
+
+# PM cannot be used for rma.mv, try ML instead
+
+object_PM <- profvis({
+  true_theta <- 0.4
+  tau2 <- 0.36
+  delta <- 0.5
+  
+  full_data <- generate_bivariate_ma(K = 25, theta = c(true_theta, true_theta), rho_w = 0.4, tau2 = c(tau2, tau2))
+  
+  obs_data <- impose_orb(full_data, p1 = 0.4, delta_sim = delta,  select_type = "zscore")
+  
+  # Univariate
+  mi_uni <- run_univariate_imputation(obs_data, theta_col = "O1_yi", se_col = "O1_sei", new_version = FALSE, method.re = "PM")
+  est_uni <- adj_univariate(mi_uni, delta = delta,  method.re = "PM")$Estimate
+  
+  # Bivariate 
+  mi_biv <- run_bivariate_imputation(obs_data, theta_cols = c("O1_yi", "O2_yi"), 
+                                     se_cols = c("O1_sei", "O2_sei"), new_version = FALSE, rho_w = 0.4,  method.re = "ML")
+  est_biv <- adj_bivariate(mi_biv, delta = delta,  method.re = "ML")$Estimate[1]
+})
+
+
+#adj_univariate --> 5.9 secs
+# adj_bivariate --> 9.3 secs
 
 
 
@@ -464,12 +487,42 @@ object <- profvis({
 
 
 
+library(microbenchmark)
+
+set.seed(123)
+N <- 2000
+
+dat <- data.frame(
+  study = factor(sample(1:200, N, replace = TRUE)),
+  yi = rnorm(N),
+  vi = runif(N, 0.05, 0.2)
+)
 
 
+bench <- microbenchmark(
 
+  rma_REML = rma(yi, vi, data = dat, method = "REML"),
 
+  rma_PM = rma(yi, vi, data = dat, method = "PM"),
 
+  rma_mv_REML = rma.mv(
+    yi, vi,
+    random = ~ 1 | study,
+    data = dat,
+    method = "REML"
+  ),
 
+  rma_mv_ML = rma.mv(
+    yi, vi,
+    random = ~ 1 | study,
+    data = dat,
+    method = "ML"
+  ),
+
+  times = 50
+)
+
+print(bench)
 
 
 
@@ -514,9 +567,8 @@ scenarios_grid <- expand.grid(
   rho_w = c(0, 0.4),                     
   delta_sim = seq(0, 1, by = 0.2),       
   delta_est = seq(0, 1, by = 0.2),       
-  select_type = c("zscore", "effect"),   
-  stringsAsFactors = FALSE
-)
+  select_type = c("zscore", "effect")
+  )
 
 
 
