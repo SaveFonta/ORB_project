@@ -124,3 +124,129 @@ adj_bivariate <- function(mi_results, delta = 0.5, select_type = "zscore") {
     CI_Upper = theta_adj + 1.96 * sqrt(total_var)
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+adj_bivariate_old <- function(mi_results, delta = 0.5, select_type = "zscore") {
+  
+  draws <- mi_results$draws
+  alternated.vector <- mi_results$alternated.vector
+  unrep_idx <- mi_results$unrep_idx
+  V_full <- mi_results$V_full
+  M <- nrow(draws)
+  
+# Prepare matrices to store results for BOTH outcomes
+  theta_MA_m <- matrix(NA, nrow = M, ncol = 2) 
+  var_MA_m <- matrix(NA, nrow = M, ncol = 2)
+  log_weights <- numeric(M)
+  valid <- rep(FALSE, M)
+  
+  for (m in 1:M) {
+    current_long <- alternated.vector
+    current_long$yi[unrep_idx] <- draws[m, ]
+    
+    # Fit the complete data model
+    # In case dont coverge --> skip
+    res_m <- tryCatch(
+      rma.mv(yi, V = V_full, mods = ~ outcome - 1,
+             random = ~ outcome | study_id, struct = "UN",
+             data = current_long, method = "REML",
+             control = list(rel.tol=1e-8, maxiter=1000)),
+      error = function(e) NULL
+    )
+    if (is.null(res_m)) next
+    
+    valid[m] <- TRUE
+
+    theta_MA_m[m, 1] <- as.numeric(res_m$beta[1]) # Out 1
+    theta_MA_m[m, 2] <- as.numeric(res_m$beta[2]) # O2
+    var_MA_m[m, 1]   <- res_m$vb[1, 1] # var O1 
+    var_MA_m[m, 2]   <- res_m$vb[2, 2] #var O2
+    
+
+    imputed_vals <- draws[m, ]
+    sei_unrep <- current_long$sei[unrep_idx]
+    
+    if (select_type == "zscore") {
+      z_vals <- imputed_vals / sei_unrep
+      log_weights[m] <- -delta * sum(z_vals) # Sums penalties across O1 and O2
+    } else {
+      log_weights[m] <- -delta * sum(imputed_vals)
+    }
+  }
+
+  # Subset to valid iterations only
+  theta_MA_m  <- theta_MA_m[valid, , drop = FALSE]
+  var_MA_m    <- var_MA_m[valid, , drop = FALSE]
+  log_weights <- log_weights[valid]
+
+
+
+  # Normalize weights
+  max_log <- max(log_weights)
+  w_norm <- exp(log_weights - max_log) / sum(exp(log_weights - max_log))
+  
+
+
+  # Adjusted Estimate (Eq. 16)
+  theta_adj_O1 <- sum(w_norm * theta_MA_m[, 1])
+  theta_adj_O2 <- sum(w_norm * theta_MA_m[, 2])
+
+  #cbind them
+  theta_adj <- c(theta_adj_O1, theta_adj_O2)
+
+  #var within
+  var_within_01 <- sum(w_norm * var_MA_m[, 1])
+  var_within_02 <- sum(w_norm * var_MA_m[, 2])
+  var_within <- c(var_within_01, var_within_02)
+
+  
+  # Rubin's Rules for Variance (Eq. 18)
+    # Between imputation variance for O1 and O2
+  var_between <- numeric(2)
+  var_between[1] <- sum(w_norm * (theta_MA_m[, 1] - theta_adj[1])^2)
+  var_between[2] <- sum(w_norm * (theta_MA_m[, 2] - theta_adj[2])^2)
+  
+  total_var <- var_within + var_between
+  
+  # Return a dataframe with rows for both outcomes
+  return(data.frame(
+    Outcome    = c("O1", "O2"),
+    Approach   = paste("Bivariate Selection on", select_type),
+    Estimate   = theta_adj,
+    SE         = sqrt(total_var),
+    CI_Lower   = theta_adj - 1.96 * sqrt(total_var),
+    CI_Upper   = theta_adj + 1.96 * sqrt(total_var)
+  ))
+}
