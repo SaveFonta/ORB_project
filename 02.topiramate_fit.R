@@ -239,7 +239,7 @@ table_2_biv_repro <- final_biv_df  |>
                 `Outcome 2_Est_SE`, `Outcome 2_CI_95`)
 
 # View the final reproducible Bivariate block of Table 2
-View(table_2_biv_repro)
+# View(table_2_biv_repro)
 
 
 
