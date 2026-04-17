@@ -103,19 +103,19 @@ final_uni_df <- do.call(rbind, results_list_uni)
 # Formatting 
 # -------------------------------------------------------------------------
 
-table_2_uni_repro <- final_uni_df %>%
+table_2_uni_repro <- final_uni_df  |> 
   dplyr::mutate(
     Outcome = ifelse(Outcome == "O1", "Outcome 1", "Outcome 2"),
     
         Est_SE = paste0(sprintf("%.2f", Estimate), " (", sprintf("%.2f", SE), ")"),
     CI_95  = paste0(sprintf("%.2f", CI_Lower), " to ", sprintf("%.2f", CI_Upper))
-  ) %>%
-  dplyr::select(Correlation, Measure, Approach, Outcome, Est_SE, CI_95) %>%
+  )  |> 
+  dplyr::select(Correlation, Measure, Approach, Outcome, Est_SE, CI_95)  |> 
   tidyr::pivot_wider(
     names_from = Outcome, 
     values_from = c(Est_SE, CI_95),
     names_glue = "{Outcome}_{.value}"
-  ) %>%
+  )  |> 
   dplyr::select(Correlation, Measure, Approach, 
                 `Outcome 1_Est_SE`, `Outcome 1_CI_95`, 
                 `Outcome 2_Est_SE`, `Outcome 2_CI_95`)
@@ -221,19 +221,19 @@ final_biv_df <- do.call(rbind, results_list_biv)
 library(dplyr)
 library(tidyr)
 
-table_2_biv_repro <- final_biv_df %>%
+table_2_biv_repro <- final_biv_df  |> 
   dplyr::mutate(
     Outcome = ifelse(Outcome == "O1", "Outcome 1", "Outcome 2"),
     
     Est_SE = paste0(sprintf("%.2f", Estimate), " (", sprintf("%.2f", SE), ")"),
     CI_95  = paste0(sprintf("%.2f", CI_Lower), " to ", sprintf("%.2f", CI_Upper))
-  ) %>%
-  dplyr::select(Correlation, Measure, Approach, Outcome, Est_SE, CI_95) %>%
+  )  |> 
+  dplyr::select(Correlation, Measure, Approach, Outcome, Est_SE, CI_95)  |> 
   tidyr::pivot_wider(
     names_from = Outcome, 
     values_from = c(Est_SE, CI_95),
     names_glue = "{Outcome}_{.value}"
-  ) %>%
+  )  |> 
   dplyr::select(Correlation, Measure, Approach, 
                 `Outcome 1_Est_SE`, `Outcome 1_CI_95`, 
                 `Outcome 2_Est_SE`, `Outcome 2_CI_95`)
