@@ -203,7 +203,7 @@ bias <- colMeans(sub[, c("full", "naive.uni", "uni", "uni_new")], na.rm = TRUE) 
 }))
 
 print(summary_tbl, row.names = FALSE)
-
+saveRDS(summary_tbl, file = "data/unbiasedness.uni.rds")
 
 
 # RESULTS WITH p1 = 0.4: 
@@ -336,12 +336,13 @@ results_df <- do.call(rbind, results_list)
 simulation_end <- Sys.time()
 
 bias_results <- colMeans(results_df, na.rm = TRUE) - true_theta
-print(round(bias_results, 5))
+print(round(bias_results, 3))
 
 
 # see the time
 difftime(simulation_end, simulation_start, units = "mins"), "minutes\n")
 
+saveRDS(bias_results, file = "data/unbiasedness.biv.rds")
 
 
 
