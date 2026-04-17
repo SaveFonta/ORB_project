@@ -260,8 +260,9 @@ View(table_2_biv_repro)
 # FINAL TABLE 2
 # ----------------------------------
 FULL_TABLE_2 <- rbind(table_2_uni_repro, table_2_biv_repro)
-View(FULL_TABLE_2)
+# View(FULL_TABLE_2)
 
+saveRDS(FULL_TABLE_2, file = "data/Table_2.rds")
 
 
 
