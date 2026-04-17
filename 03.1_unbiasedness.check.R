@@ -125,6 +125,7 @@ for (s in 1:nrow(scenarios)) {
                                                  true_theta = true_theta,
                                                  n_cores    = n_cores,
                                                  M          = M) 
+}
 
 # Bind all scenarios together
 all_results_df <- do.call(rbind, all_results)
