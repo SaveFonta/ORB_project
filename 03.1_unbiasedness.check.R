@@ -2,8 +2,17 @@
 # Comprehensive Unbiasedness Check (Univariate [REML/PM] & Bivariate)
 # over a Simulation Grid
 # ---------------------------------------------------------
+
+Sys.setenv(OMP_NUM_THREADS = "1")
+Sys.setenv(MKL_NUM_THREADS = "1")
+Sys.setenv(OPENBLAS_NUM_THREADS = "1")
+
+
 source("00.functions.R")
 library(parallel)
+
+blas_set_num_threads(1)
+omp_set_num_threads(1)
 
 RNGkind("L'Ecuyer-CMRG")
 set.seed(1)
