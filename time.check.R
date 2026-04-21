@@ -41,12 +41,12 @@ cat("printing results for K = 25, tau2 = c(0.36, 0.36)\n")
 for (seed in c(1, 32, 123)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=25, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0.36,0.36))
-  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0.7, select_type="zscore")
+  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0.5, select_type="zscore")
   mi_biv    <- run_bivariate_imputation(obs_data, theta_cols=c("O1_yi","O2_yi"),
                                         se_cols=c("O1_sei","O2_sei"), rho_w=0.4, m=1000)
-  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0.7)$Estimate[1]
-  r200   <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0.7)$Estimate[1]
-  r1000 <- adj_bivariate(mi_biv, delta=0.7)$Estimate[1]
+  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0.5)$Estimate[1]
+  r200   <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0.5)$Estimate[1]
+  r1000 <- adj_bivariate(mi_biv, delta=0.5)$Estimate[1]
   cat(sprintf("Seed %d  |  M=50: %.4f  |  M=200: %.4f  |  M=1000: %.4f\n", seed, r50, r200, r1000))
 }
 
@@ -54,12 +54,12 @@ cat("printing results for K = 6, tau2 = c(0.36, 0.36)\n")
 for (seed in c(1, 32, 123)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=6, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0.36,0.36))
-  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0.7, select_type="zscore")
+  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0.5, select_type="zscore")
   mi_biv    <- run_bivariate_imputation(obs_data, theta_cols=c("O1_yi","O2_yi"),
                                         se_cols=c("O1_sei","O2_sei"), rho_w=0.4, m=1000)
-  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0.7)$Estimate[1]
-  r200  <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0.7)$Estimate[1]
-  r1000 <- adj_bivariate(mi_biv, delta=0.7)$Estimate[1]
+  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0.5)$Estimate[1]
+  r200  <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0.5)$Estimate[1]
+  r1000 <- adj_bivariate(mi_biv, delta=0.5)$Estimate[1]
   cat(sprintf("Seed %d  |  M=50: %.4f  |  M=200: %.4f  |  M=1000: %.4f\n", seed, r50, r200, r1000))
 }
 
@@ -67,12 +67,12 @@ cat("printing results for K = 25, tau2 = c(0, 0)\n")
 for (seed in c(1, 32, 123)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=25, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0,0))
-  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0.7, select_type="zscore")
+  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0.5, select_type="zscore")
   mi_biv    <- run_bivariate_imputation(obs_data, theta_cols=c("O1_yi","O2_yi"),
                                         se_cols=c("O1_sei","O2_sei"), rho_w=0.4, m=1000)
-  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0.7)$Estimate[1]
-  r200  <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0.7)$Estimate[1]
-  r1000 <- adj_bivariate(mi_biv, delta=0.7)$Estimate[1]
+  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0.5)$Estimate[1]
+  r200  <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0.5)$Estimate[1]
+  r1000 <- adj_bivariate(mi_biv, delta=0.5)$Estimate[1]
   cat(sprintf("Seed %d  |  M=50: %.4f  |  M=200: %.4f  |  M=1000: %.4f\n", seed, r50, r200, r1000))
 }
 
@@ -80,11 +80,88 @@ cat("printing results for K = 6, tau2 = c(0, 0)\n")
 for (seed in c(1, 32, 123)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=6, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0,0))
-  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0.7, select_type="zscore")
+  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0.5, select_type="zscore")
   mi_biv    <- run_bivariate_imputation(obs_data, theta_cols=c("O1_yi","O2_yi"),
                                         se_cols=c("O1_sei","O2_sei"), rho_w=0.4, m=1000)
-  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0.7)$Estimate[1]
-  r200  <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0.7)$Estimate[1]
-  r1000 <- adj_bivariate(mi_biv, delta=0.7)$Estimate[1]
+  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0.5)$Estimate[1]
+  r200  <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0.5)$Estimate[1]
+  r1000 <- adj_bivariate(mi_biv, delta=0.5)$Estimate[1]
+  cat(sprintf("Seed %d  |  M=50: %.4f  |  M=200: %.4f  |  M=1000: %.4f\n", seed, r50, r200, r1000))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cat("#########################################################")
+cat("Results for delta = 0")
+
+
+
+
+cat("printing results for K = 25, tau2 = c(0.36, 0.36)\n")
+for (seed in c(1, 32, 123)) {
+  set.seed(seed)
+  full_data <- generate_bivariate_ma(K=25, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0.36,0.36))
+  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0, select_type="zscore")
+  mi_biv    <- run_bivariate_imputation(obs_data, theta_cols=c("O1_yi","O2_yi"),
+                                        se_cols=c("O1_sei","O2_sei"), rho_w=0.4, m=1000)
+  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0)$Estimate[1]
+  r200   <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0)$Estimate[1]
+  r1000 <- adj_bivariate(mi_biv, delta=0)$Estimate[1]
+  cat(sprintf("Seed %d  |  M=50: %.4f  |  M=200: %.4f  |  M=1000: %.4f\n", seed, r50, r200, r1000))
+}
+
+cat("printing results for K = 6, tau2 = c(0.36, 0.36)\n")
+for (seed in c(1, 32, 123)) {
+  set.seed(seed)
+  full_data <- generate_bivariate_ma(K=6, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0.36,0.36))
+  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0, select_type="zscore")
+  mi_biv    <- run_bivariate_imputation(obs_data, theta_cols=c("O1_yi","O2_yi"),
+                                        se_cols=c("O1_sei","O2_sei"), rho_w=0.4, m=1000)
+  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0)$Estimate[1]
+  r200  <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0)$Estimate[1]
+  r1000 <- adj_bivariate(mi_biv, delta=0)$Estimate[1]
+  cat(sprintf("Seed %d  |  M=50: %.4f  |  M=200: %.4f  |  M=1000: %.4f\n", seed, r50, r200, r1000))
+}
+
+cat("printing results for K = 25, tau2 = c(0, 0)\n")
+for (seed in c(1, 32, 123)) {
+  set.seed(seed)
+  full_data <- generate_bivariate_ma(K=25, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0,0))
+  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0, select_type="zscore")
+  mi_biv    <- run_bivariate_imputation(obs_data, theta_cols=c("O1_yi","O2_yi"),
+                                        se_cols=c("O1_sei","O2_sei"), rho_w=0.4, m=1000)
+  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0)$Estimate[1]
+  r200  <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0)$Estimate[1]
+  r1000 <- adj_bivariate(mi_biv, delta=0)$Estimate[1]
+  cat(sprintf("Seed %d  |  M=50: %.4f  |  M=200: %.4f  |  M=1000: %.4f\n", seed, r50, r200, r1000))
+}
+
+cat("printing results for K = 6, tau2 = c(0, 0)\n")
+for (seed in c(1, 32, 123)) {
+  set.seed(seed)
+  full_data <- generate_bivariate_ma(K=6, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0,0))
+  obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0, select_type="zscore")
+  mi_biv    <- run_bivariate_imputation(obs_data, theta_cols=c("O1_yi","O2_yi"),
+                                        se_cols=c("O1_sei","O2_sei"), rho_w=0.4, m=1000)
+  r50   <- adj_bivariate(within(mi_biv, draws <- draws[1:50,   ]), delta=0)$Estimate[1]
+  r200  <- adj_bivariate(within(mi_biv, draws <- draws[1:200,  ]), delta=0)$Estimate[1]
+  r1000 <- adj_bivariate(mi_biv, delta=0)$Estimate[1]
   cat(sprintf("Seed %d  |  M=50: %.4f  |  M=200: %.4f  |  M=1000: %.4f\n", seed, r50, r200, r1000))
 }
