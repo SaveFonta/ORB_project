@@ -96,7 +96,12 @@ adj_univariate <- function(mi_results, delta = 0.5, select_type = "zscore", meth
   data_ordered <- mi_results$data_ordered
   unrep_idx    <- mi_results$unrep_idx
   M            <- nrow(draws)
+  
 
+    # if nothing missing, return null
+  if (length(unrep_idx) == 0) return(NULL)
+
+  
   theta_col    <- mi_results$theta_col  #  from mi_results
   se_col       <- mi_results$se_col     #  from mi_results
 
@@ -203,7 +208,7 @@ if (select_type == "zscore") {
 ## Bivariate functions 
 # ----------------------------
 
-run_bivariate_imputation <- function(data, theta_cols, se_cols, rho_w = 0.7, m = 1000, new_version = FALSE, method.re = "REML") {
+run_bivariate_imputation <- function(data, theta_cols, se_cols, rho_w = 0.4, m = 1000, new_version = FALSE, method.re = "REML") {
   
   K <- nrow(data)
   
@@ -214,6 +219,10 @@ run_bivariate_imputation <- function(data, theta_cols, se_cols, rho_w = 0.7, m =
   rep_idx <- which(!is.na(y_vec))
   unrep_idx <- which(is.na(y_vec))
   
+  # if nothing missing, return null
+  if (length(unrep_idx) == 0) return(NULL)
+
+
   # builde the V's (within study cov)
   V_list <- list()
   for (i in 1:K) { # one for each study 
@@ -502,7 +511,7 @@ logit <- function(p) log(p / (1 - p))
 
 
 
-impose_orb <- function(data, p1 = 0.2, delta_sim = 0.5, select_type = "zscore") {
+impose_orb <- function(data, p1 = 0.4, delta_sim = 0.5, select_type = "zscore") {
   
   #extract stuff from attributes
   theta1 <- attr(data, "theta1")

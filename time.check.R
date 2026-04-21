@@ -38,7 +38,7 @@ obs_data  <- impose_orb(full_data, p1 = 0.4, delta_sim = 0.7, select_type = "zsc
 
 
 cat("printing results for K = 25, tau2 = c(0.36, 0.36)\n")
-for (seed in c(1, 32, 123)) {
+for (seed in c(1, 2, 3)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=25, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0.36,0.36))
   obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=1, select_type="zscore")
@@ -51,7 +51,7 @@ for (seed in c(1, 32, 123)) {
 }
 
 cat("printing results for K = 6, tau2 = c(0.36, 0.36)\n")
-for (seed in c(1, 32, 123)) {
+for (seed in c(1, 2, 3)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=6, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0.36,0.36))
   obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=1, select_type="zscore")
@@ -64,7 +64,7 @@ for (seed in c(1, 32, 123)) {
 }
 
 cat("printing results for K = 25, tau2 = c(0, 0)\n")
-for (seed in c(1, 32, 123)) {
+for (seed in c(1, 2, 3)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=25, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0,0))
   obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=1, select_type="zscore")
@@ -77,7 +77,7 @@ for (seed in c(1, 32, 123)) {
 }
 
 cat("printing results for K = 6, tau2 = c(0, 0)\n")
-for (seed in c(1, 32, 123)) {
+for (seed in c(1, 2, 3)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=6, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0,0))
   obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=1, select_type="zscore")
@@ -100,14 +100,6 @@ for (seed in c(1, 32, 123)) {
 
 
 
-
-
-
-
-
-
-
-
 cat("#########################################################")
 cat("Results for delta = 0")
 
@@ -115,7 +107,7 @@ cat("Results for delta = 0")
 
 
 cat("printing results for K = 25, tau2 = c(0.36, 0.36)\n")
-for (seed in c(1, 32, 123)) {
+for (seed in c(1, 2, 3)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=25, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0.36,0.36))
   obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0, select_type="zscore")
@@ -128,7 +120,7 @@ for (seed in c(1, 32, 123)) {
 }
 
 cat("printing results for K = 6, tau2 = c(0.36, 0.36)\n")
-for (seed in c(1, 32, 123)) {
+for (seed in c(1, 2, 3)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=6, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0.36,0.36))
   obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0, select_type="zscore")
@@ -141,7 +133,7 @@ for (seed in c(1, 32, 123)) {
 }
 
 cat("printing results for K = 25, tau2 = c(0, 0)\n")
-for (seed in c(1, 32, 123)) {
+for (seed in c(1, 2, 3)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=25, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0,0))
   obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0, select_type="zscore")
@@ -154,7 +146,7 @@ for (seed in c(1, 32, 123)) {
 }
 
 cat("printing results for K = 6, tau2 = c(0, 0)\n")
-for (seed in c(1, 32, 123)) {
+for (seed in c(1, 2, 3)) {
   set.seed(seed)
   full_data <- generate_bivariate_ma(K=6, theta=c(0.4,0.4), rho_w=0.4, tau2=c(0,0))
   obs_data  <- impose_orb(full_data, p1=0.4, delta_sim=0, select_type="zscore")
