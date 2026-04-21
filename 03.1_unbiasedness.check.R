@@ -19,7 +19,7 @@ set.seed(1)
 n_sim <- 1000
 true_theta <- 0.4
 n_cores <- 4
-M <- 1000 # imputations
+M <- 200 # imputations
 
 # Define the grid of scenarios
 scenarios <- expand.grid(
@@ -52,6 +52,19 @@ run_comprehensive_scenario <- function(tau2, delta, n_sim, true_theta, n_cores, 
       # Impose ORB
       obs_data <- impose_orb(full_data, p1 = 0.4, delta_sim = delta,  select_type = "zscore")
       
+
+      # If no studies were suppressed, skip imputation entirely
+      
+      if (all(!is.na(obs_data$O1_yi))) {
+        return(data.frame(
+          full.reml=est_full_reml, full.pm=est_full_pm,
+          naive.uni.reml=NA, naive.uni.pm=NA, naive.biv=NA,
+          uni.reml=NA, uni.pm=NA, uni_new.reml=NA, uni_new.pm=NA,
+          biv=NA, biv_new=NA
+        ))
+      }
+
+
       # --- Univariate (Old) - REML ---
       mi_uni_reml <- run_univariate_imputation(obs_data, theta_col = "O1_yi", se_col = "O1_sei", new_version = FALSE, method.re = "REML", m = M)
       est_uni_reml <- adj_univariate(mi_uni_reml, delta = delta, method.re = "REML")$Estimate
