@@ -3,9 +3,6 @@
 # over a Simulation Grid
 # ---------------------------------------------------------
 
-Sys.setenv(OMP_NUM_THREADS = "1")
-Sys.setenv(MKL_NUM_THREADS = "1")
-Sys.setenv(OPENBLAS_NUM_THREADS = "1")
 
 
 source("00.functions.R")
