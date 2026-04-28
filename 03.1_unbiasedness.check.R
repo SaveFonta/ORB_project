@@ -1,6 +1,5 @@
 # ---------------------------------------------------------
-# Comprehensive Unbiasedness Check (Univariate [REML/PM] & Bivariate)
-# over a Simulation Grid
+# Comprehensive Unbiasedness Check 
 # ---------------------------------------------------------
 
 
@@ -170,3 +169,78 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
 # Print and save
 print(summary_tbl, row.names = FALSE)
 saveRDS(summary_tbl, file = "data/unbiasedness.comprehensive.rds")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#################################
+# ------------------------- 
+# Results 
+# -------------------------
+
+
+res <- readRDS("data/unbiasedness.comprehensive.rds")
+
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+method_cols <- c(
+  "full.reml", "full.pm", "naive.uni.reml", "naive.uni.pm", "naive.biv",
+  "uni.reml", "uni.pm", "uni_new.reml", "uni_new.pm", "biv", "biv_new"
+)
+
+plot_df <- res %>%
+  pivot_longer(cols = all_of(method_cols), names_to = "method", values_to = "bias") %>%
+  mutate(
+    scenario = paste0("tau2=", tau2, ", delta=", delta),
+    method = factor(method, levels = method_cols)
+  )
+
+# Facet by scenario 
+p1 <- ggplot(plot_df, aes(x = method, y = bias, color = method, group = 1)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  geom_line(linewidth = 0.5, show.legend = FALSE) +
+  geom_point(size = 2, show.legend = FALSE) +
+  facet_wrap(~scenario, ncol = 3) +
+  coord_flip() +
+  labs(
+    title = "Estimator Bias by Scenario",
+    x = "Method",
+    y = "Bias"
+  ) +
+  theme_bw(base_size = 11)
+
+print(p1)
+
+# Plot 2: Heatmap for quick cross-scenario comparison
+p2 <- ggplot(plot_df, aes(x = method, y = scenario, fill = bias)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0) +
+  labs(
+    title = "Bias Heatmap Across Methods and Scenarios",
+    x = "Method",
+    y = "Scenario",
+    fill = "Bias"
+  ) +
+  theme_bw(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(p2)
+
+
+
+

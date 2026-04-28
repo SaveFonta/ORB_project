@@ -8,6 +8,36 @@ library(metafor)
 
 
 
+#---------------------------------------
+# Imputing missing se
+# --------------------------------
+
+
+
+
+impute_missing_se <- function(data, target_theta_col, target_se_col, n.total = 100) {
+  
+  # Identify reported and unreported indices
+  rep_idx <- which(!is.na(data[[target_theta_col]]))
+  unrep_idx <- which(is.na(data[[target_theta_col]]))
+  
+  # If there are no missing values for this outcome, return data 
+  if(length(unrep_idx) == 0) {
+    return(data)
+  }
+  
+  # Calculate k_hat using only the reported studies (Eq. 6)
+  precisions <- 1 / (data[[target_se_col]][rep_idx]^2)
+  k_hat <- sum(precisions) / sum(n.total * length(rep_idx))
+  
+  # Impute the missing standard errors
+  data[[target_se_col]][unrep_idx] <- sqrt(1 / (k_hat * n.total))
+  
+  return(data)
+}
+
+
+
 
 
 
@@ -67,8 +97,10 @@ run_univariate_imputation <- function(data, theta_col = "log_RR2", se_col = "se_
   
   # Conditionals (Eq. 11) 
   theta_R <- data_rep[[theta_col]]
-  mu_cond <- as.numeric(theta_MA + Sigma_UR %*% solve(Sigma_RR) %*% (theta_R - theta_MA))
-  Sigma_cond <- Sigma_UU - Sigma_UR %*% solve(Sigma_RR) %*% Sigma_RU
+  inv_Sigma_RR <-solve(Sigma_RR) 
+
+  mu_cond <- as.numeric(theta_MA + Sigma_UR %*% inv_Sigma_RR %*% (theta_R - theta_MA))
+  Sigma_cond <- Sigma_UU - Sigma_UR %*% inv_Sigma_RR %*% Sigma_RU
   
   # Generate M Imputations (we get a matrix m x n_unrep)
   imputed_draws <- mvrnorm(n = m, mu = mu_cond, Sigma = Sigma_cond)
@@ -288,8 +320,9 @@ run_bivariate_imputation <- function(data, theta_cols, se_cols, rho_w = 0.4, m =
   theta_U_MA <- theta_MA_vec[unrep_idx]
   theta_R <- y_vec[rep_idx]
   
-  mu_cond <- theta_U_MA + Sigma_UR %*% solve(Sigma_RR) %*% (theta_R - theta_R_MA)
-  Sigma_cond <- Sigma_UU - Sigma_UR %*% solve(Sigma_RR) %*% Sigma_RU
+  inv_Sigma_RR <- solve(Sigma_RR)
+  mu_cond <- theta_U_MA + Sigma_UR %*% inv_Sigma_RR %*% (theta_R - theta_R_MA)
+  Sigma_cond <- Sigma_UU - Sigma_UR %*% inv_Sigma_RR %*% Sigma_RU
   
   # Generate M Imputations
   imputed_draws <- mvrnorm(n = m, mu = as.numeric(mu_cond), Sigma = Sigma_cond)
@@ -511,7 +544,7 @@ logit <- function(p) log(p / (1 - p))
 
 
 
-impose_orb <- function(data, p1 = 0.4, delta_sim = 0.5, select_type = "zscore") {
+impose_orb <- function(data, p1 = 0.4, delta_sim = 0.5, select_type = "zscore", orb.se = FALSE) {
   
   #extract stuff from attributes
   theta1 <- attr(data, "theta1")
@@ -550,8 +583,7 @@ impose_orb <- function(data, p1 = 0.4, delta_sim = 0.5, select_type = "zscore") 
   data_orb <- data
   data_orb$O1_yi[reported_flag == 0] <- NA
  
- #QUESTION-->  should I also unreport the SE?? I think it is just one addditional step of inputing SEs...
- #data_orb$O1_sei[reported_flag == 0] <- NA 
+  if (orb.se) data_orb$O1_sei[reported_flag == 0] <- NA 
   
   return(data_orb)
 }
