@@ -14,7 +14,7 @@ set.seed(1)
 # Simulation parameters
 n_sim <- 1000
 true_theta <- 0.4
-n_cores <- 4
+n_cores <- 25
 M <- 200 # imputations
 
 # Define the grid of scenarios
