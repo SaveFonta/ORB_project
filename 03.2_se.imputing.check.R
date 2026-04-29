@@ -18,7 +18,7 @@ M <- 200 # imputations
 
 
 
-run_orb_se_comparison_scenario <- function(tau2, delta, orb_se, n_sim, true_theta, n_cores, M) {
+run_orb_se_comparison_scenario <- function(K, tau2, delta, orb_se, n_sim, true_theta, n_cores, M) {
   start <- Sys.time()
   
   results_list <- list()
@@ -27,7 +27,7 @@ run_orb_se_comparison_scenario <- function(tau2, delta, orb_se, n_sim, true_thet
     batch <- mclapply(seq_len(needed), function(i) {
       tryCatch({
         full_data <- generate_bivariate_ma(
-          K = 25,
+          K = K,
           theta = c(true_theta, true_theta),
           rho_w = 0.4,
           tau2 = c(tau2, tau2)
@@ -72,6 +72,7 @@ run_orb_se_comparison_scenario <- function(tau2, delta, orb_se, n_sim, true_thet
         naive.biv <- as.numeric(mi_biv_new$res_naive$beta[1])
         
         data.frame(
+          K = K,
           naive.uni.reml = naive.uni.reml,
           uni_new.reml = est_uni_new,
           naive.biv = naive.biv,
@@ -88,6 +89,7 @@ run_orb_se_comparison_scenario <- function(tau2, delta, orb_se, n_sim, true_thet
   
   end <- Sys.time()
   results_df <- do.call(rbind, results_list[seq_len(n_sim)])
+  results_df$K <- K
   results_df$tau2 <- tau2
   results_df$delta <- delta
   results_df$orb_se <- orb_se
@@ -97,6 +99,7 @@ run_orb_se_comparison_scenario <- function(tau2, delta, orb_se, n_sim, true_thet
 }
 
 orb_se_scenarios <- expand.grid(
+  K = c(25, 6),
   tau2 = c(0.06, 0.36),
   delta = c(0, 0.7, 1),
   orb_se = c(FALSE, TRUE)
@@ -106,15 +109,17 @@ orb_se_results <- vector("list", nrow(orb_se_scenarios))
 
 for (s in 1:nrow(orb_se_scenarios)) {
   cat(sprintf(
-    "\nRunning ORB-SE scenario %d/%d  (tau2 = %.2f, delta = %.1f, orb_se = %s)...\n",
+    "\nRunning ORB-SE scenario %d/%d  (K = %d, tau2 = %.2f, delta = %.1f, orb_se = %s)...\n",
     s,
     nrow(orb_se_scenarios),
+    orb_se_scenarios$K[s],
     orb_se_scenarios$tau2[s],
     orb_se_scenarios$delta[s],
     orb_se_scenarios$orb_se[s]
   ))
 
   orb_se_results[[s]] <- run_orb_se_comparison_scenario(
+    K = orb_se_scenarios$K[s],
     tau2 = orb_se_scenarios$tau2[s],
     delta = orb_se_scenarios$delta[s],
     orb_se = orb_se_scenarios$orb_se[s],
@@ -137,7 +142,8 @@ orb_se_results_df <- do.call(rbind, orb_se_results)
 
 
 
-
+library(dplyr)
+library(tidyr)
 
 # ---------------
 # summary
@@ -145,6 +151,7 @@ orb_se_results_df <- do.call(rbind, orb_se_results)
 orb_se_summary_tbl <- do.call(rbind, lapply(1:nrow(orb_se_scenarios), function(s) {
   sub <- subset(
     orb_se_results_df,
+    K == orb_se_scenarios$K[s] &
     tau2 == orb_se_scenarios$tau2[s] &
       delta == orb_se_scenarios$delta[s] &
       orb_se == orb_se_scenarios$orb_se[s]
@@ -153,6 +160,7 @@ orb_se_summary_tbl <- do.call(rbind, lapply(1:nrow(orb_se_scenarios), function(s
   bias <- colMeans(sub[, c("naive.uni.reml", "uni_new.reml", "naive.biv", "biv_new")], na.rm = TRUE) - true_theta
   
   data.frame(
+    K = orb_se_scenarios$K[s],
     tau2 = orb_se_scenarios$tau2[s],
     delta = orb_se_scenarios$delta[s],
     orb_se = orb_se_scenarios$orb_se[s],
@@ -164,3 +172,45 @@ orb_se_summary_tbl <- do.call(rbind, lapply(1:nrow(orb_se_scenarios), function(s
 print(orb_se_summary_tbl, row.names = FALSE)
 saveRDS(orb_se_summary_tbl, file = "data/unbiasedness.orb_se.comparison.rds")
 
+
+
+
+# -------------------------
+# REPORT RESULTS
+# -------------------------
+
+
+orb_se_summary_tbl <- readRDS("data/unbiasedness.orb_se.comparison.rds")
+
+library(ggplot2)
+
+# Reshape to long format for plotting
+long <- orb_se_summary_tbl |> 
+  pivot_longer(
+    cols = c(naive.uni.reml, uni_new.reml, naive.biv, biv_new),
+    names_to = "method",
+    values_to = "bias"
+  )
+
+# Create the plot
+p <- ggplot(long, aes(x = method, y = bias, fill = method)) +
+  geom_col() +
+  facet_grid(K + delta ~ tau2 + orb_se, labeller = labeller(
+    K = c("6" = "K = 6", "25" = "K = 25"),
+    delta = c("0" = "delta = 0", "0.7" = "delta = 0.7", "1" = "delta = 1"),
+    tau2 = c("0.06" = "tau2 = 0.06", "0.36" = "tau2 = 0.36"),
+    orb_se = c("FALSE" = "ORB-SE = No", "TRUE" = "ORB-SE = Yes")
+  )) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  ) +
+  labs(
+    title = "Bias Comparison: ORB-SE Scenarios",
+    x = "Method",
+    y = "Bias",
+    fill = "Method"
+  )
+
+print(p)

@@ -19,20 +19,21 @@ M <- 200 # imputations
 
 # Define the grid of scenarios
 scenarios <- expand.grid(
+  K     = c(25, 6),
   tau2  = c(0.06, 0.36),
   delta = c(0, 0.7, 1)
 )
 
 # ---------------------------------------------------------
-# 1. Define the Scenario Function
+#  Define the Scenario Function
 # ---------------------------------------------------------
-run_comprehensive_scenario <- function(tau2, delta, n_sim, true_theta, n_cores, M) {
+run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_cores, M) {
   start <- Sys.time()
   
   results_list <- mclapply(1:n_sim, function(i) {
     tryCatch({
       # Generate full data
-      full_data <- generate_bivariate_ma(K = 25, theta = c(true_theta, true_theta), 
+      full_data <- generate_bivariate_ma(K = K, theta = c(true_theta, true_theta), 
                                          rho_w = 0.4, tau2 = c(tau2, tau2))
       
       # --- Baseline (No ORB) - REML ---
@@ -53,6 +54,7 @@ run_comprehensive_scenario <- function(tau2, delta, n_sim, true_theta, n_cores, 
       
       if (all(!is.na(obs_data$O1_yi))) {
         return(data.frame(
+          K = K,
           full.reml=est_full_reml, full.pm=est_full_pm,
           naive.uni.reml=NA, naive.uni.pm=NA, naive.biv=NA,
           uni.reml=NA, uni.pm=NA, uni_new.reml=NA, uni_new.pm=NA,
@@ -92,6 +94,7 @@ run_comprehensive_scenario <- function(tau2, delta, n_sim, true_theta, n_cores, 
       
       # Return as a 1-row data frame
       return(data.frame(
+        K              = K,
         full.reml      = est_full_reml, 
         full.pm        = est_full_pm,
         naive.uni.reml = naive.uni.reml, 
@@ -108,6 +111,7 @@ run_comprehensive_scenario <- function(tau2, delta, n_sim, true_theta, n_cores, 
     }, error = function(e) {
       # Return NAs if convergence fails to avoid crashing the job
       return(data.frame(
+        K = K,
         full.reml=NA, full.pm=NA, naive.uni.reml=NA, naive.uni.pm=NA, naive.biv=NA, 
         uni.reml=NA, uni.pm=NA, uni_new.reml=NA, uni_new.pm=NA, biv=NA, biv_new=NA
       ))
@@ -126,16 +130,17 @@ run_comprehensive_scenario <- function(tau2, delta, n_sim, true_theta, n_cores, 
 }
 
 # ---------------------------------------------------------
-# 2. Loop Over the Grid
+# Loop Over the Grid
 # ---------------------------------------------------------
 all_results <- vector("list", nrow(scenarios))
 
 for (s in 1:nrow(scenarios)) {
-  cat(sprintf("\nRunning scenario %d/%d  (tau2 = %.2f, delta = %.1f)...\n",
-              s, nrow(scenarios), scenarios$tau2[s], scenarios$delta[s]))
+  cat(sprintf("\nRunning scenario %d/%d  (K = %d, tau2 = %.2f, delta = %.1f)...\n",
+              s, nrow(scenarios), scenarios$K[s], scenarios$tau2[s], scenarios$delta[s]))
   
   set.seed(s) 
-  all_results[[s]] <- run_comprehensive_scenario(tau2       = scenarios$tau2[s],
+  all_results[[s]] <- run_comprehensive_scenario(K          = scenarios$K[s],
+                                                 tau2       = scenarios$tau2[s],
                                                  delta      = scenarios$delta[s],
                                                  n_sim      = n_sim,
                                                  true_theta = true_theta,
@@ -147,11 +152,11 @@ for (s in 1:nrow(scenarios)) {
 all_results_df <- do.call(rbind, all_results)
 
 # ---------------------------------------------------------
-# 3. Create the Summary Table
+# Create the Summary Table
 # ---------------------------------------------------------
 summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
   # Subset to the current scenario
-  sub  <- subset(all_results_df, tau2 == scenarios$tau2[s] & delta == scenarios$delta[s])
+  sub  <- subset(all_results_df, K == scenarios$K[s] & tau2 == scenarios$tau2[s] & delta == scenarios$delta[s])
   
   # Calculate bias for all 11 estimators
   cols_to_avg <- c("full.reml", "full.pm", "naive.uni.reml", "naive.uni.pm", "naive.biv", 
@@ -160,7 +165,8 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
   bias <- colMeans(sub[, cols_to_avg], na.rm = TRUE) - true_theta
   
   # Build the row
-  data.frame(tau2      = scenarios$tau2[s],
+  data.frame(K         = scenarios$K[s],
+             tau2      = scenarios$tau2[s],
              delta     = scenarios$delta[s],
              t(round(bias, 5)),
              time_min  = round(sub$time_min[1], 2))
@@ -206,11 +212,10 @@ method_cols <- c(
 plot_df <- res %>%
   pivot_longer(cols = all_of(method_cols), names_to = "method", values_to = "bias") %>%
   mutate(
-    scenario = paste0("tau2=", tau2, ", delta=", delta),
+    scenario = paste0("K=", K, ", tau2=", tau2, ", delta=", delta),
     method = factor(method, levels = method_cols)
   )
 
-# Facet by scenario 
 p1 <- ggplot(plot_df, aes(x = method, y = bias, color = method, group = 1)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
   geom_line(linewidth = 0.5, show.legend = FALSE) +
@@ -218,29 +223,10 @@ p1 <- ggplot(plot_df, aes(x = method, y = bias, color = method, group = 1)) +
   facet_wrap(~scenario, ncol = 3) +
   coord_flip() +
   labs(
-    title = "Estimator Bias by Scenario",
+    title = "Bias by Scenario",
     x = "Method",
     y = "Bias"
   ) +
   theme_bw(base_size = 11)
 
 print(p1)
-
-# Plot 2: Heatmap for quick cross-scenario comparison
-p2 <- ggplot(plot_df, aes(x = method, y = scenario, fill = bias)) +
-  geom_tile(color = "white") +
-  scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B", midpoint = 0) +
-  labs(
-    title = "Bias Heatmap Across Methods and Scenarios",
-    x = "Method",
-    y = "Scenario",
-    fill = "Bias"
-  ) +
-  theme_bw(base_size = 11) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-print(p2)
-
-
-
-
