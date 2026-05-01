@@ -20,8 +20,9 @@ scenarios <- expand.grid(
   delta = c(0, 0.5, 1)
 )
 
-# function to subset to m the generate df of M = 1000 imputations 
+# function to subset to m = c(50,200,1000) from the generated df of M = 1000 imputations 
 subset_mi <- function(mi, m_use) {
+    # it get passed a null df in the case of a failure in rma naive
   if (is.null(mi)) return(NULL)
   
   mi_sub <- mi
@@ -81,23 +82,76 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
       # If no studies are missing, skip  
       if (all(!is.na(obs_data$O1_yi))) {
         return(data.frame(
-          K = K,
-          full.reml=est_full_reml, full.pm=est_full_pm,
-          naive.uni.reml=NA, naive.uni.pm=NA, naive.biv=NA,
-          uni.reml_50=NA, uni.reml_200=NA, uni.reml_1000=NA,
-          uni.pm_50=NA, uni.pm_200=NA, uni.pm_1000=NA,
-          uni_new.reml_50=NA, uni_new.reml_200=NA, uni_new.reml_1000=NA,
-          uni_new.pm_50=NA, uni_new.pm_200=NA, uni_new.pm_1000=NA,
-          biv_50=NA, biv_200=NA, biv_1000=NA,
-          biv_new_50=NA, biv_new_200=NA, biv_new_1000=NA,
-          ess_uni.reml_50=NA, ess_uni.reml_200=NA, ess_uni.reml_1000=NA,
-          ess_uni.pm_50=NA, ess_uni.pm_200=NA, ess_uni.pm_1000=NA,
-          ess_uni_new.reml_50=NA, ess_uni_new.reml_200=NA, ess_uni_new.reml_1000=NA,
-          ess_uni_new.pm_50=NA, ess_uni_new.pm_200=NA, ess_uni_new.pm_1000=NA,
-          ess_biv_50=NA, ess_biv_200=NA, ess_biv_1000=NA,
-          ess_biv_new_50=NA, ess_biv_new_200=NA, ess_biv_new_1000=NA, 
-          failed_biv_1000=NA, failed_biv_new_1000=NA
-        ))
+        # specific simulation parameters
+        K              = K,
+        tau2           = tau2,
+        delta          = delta,
+
+        
+        # Naive results
+        full.reml      = est_full_reml, 
+        full.pm        = est_full_pm,
+        naive.uni.reml = NA, 
+        naive.uni.pm   = NA,
+        naive.uni_new_reml = NA,
+        naive.uni_new_pm = NA, 
+        naive.biv      = NA, 
+        naive.biv_new = NA,
+        
+        # Estimates (50, 200, 1000)
+        uni.reml_50       = NA,
+        uni.reml_200      = NA,
+        uni.reml_1000     = NA,
+        
+        uni.pm_50         = NA,
+        uni.pm_200        = NA,
+        uni.pm_1000       = NA,
+        
+        uni_new.reml_50   = NA,
+        uni_new.reml_200  = NA,
+        uni_new.reml_1000 = NA,
+        
+        uni_new.pm_50     = NA,
+        uni_new.pm_200    = NA,
+        uni_new.pm_1000   = NA,
+        
+        biv_50            = NA,
+        biv_200           = NA,
+        biv_1000          = NA,
+        
+        biv_new_50        = NA,
+        biv_new_200       = NA,
+        biv_new_1000      = NA,
+        
+        # ess 
+        ess_uni.reml_50      = NA,
+        ess_uni.reml_200     = NA,
+        ess_uni.reml_1000     = NA,
+
+        ess_uni.pm_50         = NA,
+        ess_uni.pm_200        = NA,
+        ess_uni.pm_1000       = NA,
+
+        ess_uni_new.reml_50   = NA,
+        ess_uni_new.reml_200  = NA,
+        ess_uni_new.reml_1000 = NA,
+
+        ess_uni_new.pm_50     = NA,
+        ess_uni_new.pm_200    = NA,
+        ess_uni_new.pm_1000   = NA,
+        
+        ess_biv_50        = NA,
+        ess_biv_200       = NA,
+        ess_biv_1000      = NA,
+        
+        ess_biv_new_50    = NA,
+        ess_biv_new_200   = NA,
+        ess_biv_new_1000  = NA,
+        
+        # Failure 
+        failed_biv_1000     = NA,
+        failed_biv_new_1000 = NA
+      ))
       }
 
       # --- Impute SEs  ---
@@ -127,7 +181,8 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
       # 3. Univariate (New) - REML
       # ---------------------------------------------------------
       mi_uni_new_reml <- run_univariate_imputation(obs_data, theta_col = "O1_yi", se_col = "O1_sei", new_version = TRUE, method.re = "REML", m = M)
-      
+      naive.uni_new_reml <- as.numeric(mi_uni_new_reml$res_naive$beta) 
+
       uni_new_reml_50   <- safe_adj_uni(mi_uni_new_reml, 50, delta, "REML")
       uni_new_reml_200  <- safe_adj_uni(mi_uni_new_reml, 200, delta, "REML")
       uni_new_reml_1000 <- safe_adj_uni(mi_uni_new_reml, 1000, delta, "REML")
@@ -136,7 +191,8 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
       # 4. Univariate (New) - PM
       # ---------------------------------------------------------
       mi_uni_new_pm <- run_univariate_imputation(obs_data, theta_col = "O1_yi", se_col = "O1_sei", new_version = TRUE, method.re = "PM", m = M)
-      
+      naive.uni_new_pm <- as.numeric(mi_uni_new_pm$res_naive$beta) 
+
       uni_new_pm_50   <- safe_adj_uni(mi_uni_new_pm, 50, delta, "PM")
       uni_new_pm_200  <- safe_adj_uni(mi_uni_new_pm, 200, delta, "PM")
       uni_new_pm_1000 <- safe_adj_uni(mi_uni_new_pm, 1000, delta, "PM")
@@ -155,7 +211,9 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
       # 6. Bivariate (New)
       # ---------------------------------------------------------
       mi_biv_new <- run_bivariate_imputation(obs_data, theta_cols = c("O1_yi", "O2_yi"), se_cols = c("O1_sei", "O2_sei"), new_version = TRUE, rho_w = 0.4, m = M)
+      naive.biv_new <- as.numeric(mi_biv_new$res_naive$beta[1]) 
       
+
       biv_new_50   <- safe_adj_biv(mi_biv_new, 50, delta)
       biv_new_200  <- safe_adj_biv(mi_biv_new, 200, delta)
       biv_new_1000 <- safe_adj_biv(mi_biv_new, 1000, delta)
@@ -163,13 +221,22 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
       # ---------------------------------------------------------
       # return just a row df
       # ---------------------------------------------------------
-      return(data.frame(
+        return(data.frame(
+        # specific simulation parameters
         K              = K,
+        tau2           = tau2,
+        delta          = delta,
+
+        
+        # Naive results
         full.reml      = est_full_reml, 
-        full.pm=est_full_pm,
+        full.pm        = est_full_pm,
         naive.uni.reml = naive.uni.reml, 
         naive.uni.pm   = naive.uni.pm,
+        naive.uni_new_reml = naive.uni_new_reml,
+        naive.uni_new_pm = naive.uni_new_pm, 
         naive.biv      = naive.biv, 
+        naive.biv_new = naive.biv_new,
         
         # Estimates (50, 200, 1000)
         uni.reml_50       = uni_reml_50["est"],
@@ -196,16 +263,19 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
         biv_new_200       = biv_new_200["est"],
         biv_new_1000      = biv_new_1000["est"],
         
-        # --- NEW: Varying ESS Diagnostics ---
+        # ess 
         ess_uni.reml_50      = uni_reml_50["ess"],
         ess_uni.reml_200     = uni_reml_200["ess"],
         ess_uni.reml_1000     = uni_reml_1000["ess"],
+
         ess_uni.pm_50         = uni_pm_50["ess"],
         ess_uni.pm_200        = uni_pm_200["ess"],
         ess_uni.pm_1000       = uni_pm_1000["ess"],
+
         ess_uni_new.reml_50   = uni_new_reml_50["ess"],
         ess_uni_new.reml_200  = uni_new_reml_200["ess"],
         ess_uni_new.reml_1000 = uni_new_reml_1000["ess"],
+        
         ess_uni_new.pm_50     = uni_new_pm_50["ess"],
         ess_uni_new.pm_200    = uni_new_pm_200["ess"],
         ess_uni_new.pm_1000   = uni_new_pm_1000["ess"],
@@ -218,29 +288,83 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
         ess_biv_new_200   = biv_new_200["ess"],
         ess_biv_new_1000  = biv_new_1000["ess"],
         
-        # Failure Proportions
+        # Failure 
         failed_biv_1000     = biv_1000["failed.prop"],
         failed_biv_new_1000 = biv_new_1000["failed.prop"]
       ))
       
     }, error = function(e) {
       # Return NAs if the entire iteration fails
-      return(data.frame(
-        K = K,
-        full.reml=NA, full.pm=NA, naive.uni.reml=NA, naive.uni.pm=NA, naive.biv=NA, 
-        uni.reml_50=NA, uni.reml_200=NA, uni.reml_1000=NA,
-        uni.pm_50=NA, uni.pm_200=NA, uni.pm_1000=NA,
-        uni_new.reml_50=NA, uni_new.reml_200=NA, uni_new.reml_1000=NA,
-        uni_new.pm_50=NA, uni_new.pm_200=NA, uni_new.pm_1000=NA,
-        biv_50=NA, biv_200=NA, biv_1000=NA,
-        biv_new_50=NA, biv_new_200=NA, biv_new_1000=NA,
-        ess_uni.reml_50=NA, ess_uni.reml_200=NA, ess_uni.reml_1000=NA,
-        ess_uni.pm_50=NA, ess_uni.pm_200=NA, ess_uni.pm_1000=NA,
-        ess_uni_new.reml_50=NA, ess_uni_new.reml_200=NA, ess_uni_new.reml_1000=NA,
-        ess_uni_new.pm_50=NA, ess_uni_new.pm_200=NA, ess_uni_new.pm_1000=NA,
-        ess_biv_50=NA, ess_biv_200=NA, ess_biv_1000=NA,
-        ess_biv_new_50=NA, ess_biv_new_200=NA, ess_biv_new_1000=NA, 
-        failed_biv_1000=NA, failed_biv_new_1000=NA
+        return(data.frame(
+        # specific simulation parameters
+        K              = K,
+        tau2           = tau2,
+        delta          = delta,
+
+        
+        # Naive results
+        full.reml      = NA, 
+        full.pm        = NA,
+        naive.uni.reml = NA, 
+        naive.uni.pm   = NA,
+        naive.uni_new_reml = NA,
+        naive.uni_new_pm = NA, 
+        naive.biv      = NA, 
+        naive.biv_new = NA,
+        
+        # Estimates (50, 200, 1000)
+        uni.reml_50       = NA,
+        uni.reml_200      = NA,
+        uni.reml_1000     = NA,
+        
+        uni.pm_50         = NA,
+        uni.pm_200        = NA,
+        uni.pm_1000       = NA,
+        
+        uni_new.reml_50   = NA,
+        uni_new.reml_200  = NA,
+        uni_new.reml_1000 = NA,
+        
+        uni_new.pm_50     = NA,
+        uni_new.pm_200    = NA,
+        uni_new.pm_1000   = NA,
+        
+        biv_50            = NA,
+        biv_200           = NA,
+        biv_1000          = NA,
+        
+        biv_new_50        = NA,
+        biv_new_200       = NA,
+        biv_new_1000      = NA,
+        
+        # ess 
+        ess_uni.reml_50      = NA,
+        ess_uni.reml_200     = NA,
+        ess_uni.reml_1000     = NA,
+
+        ess_uni.pm_50         = NA,
+        ess_uni.pm_200        = NA,
+        ess_uni.pm_1000       = NA,
+
+        ess_uni_new.reml_50   = NA,
+        ess_uni_new.reml_200  = NA,
+        ess_uni_new.reml_1000 = NA,
+
+        ess_uni_new.pm_50     = NA,
+        ess_uni_new.pm_200    = NA,
+        ess_uni_new.pm_1000   = NA,
+        
+        ess_biv_50        = NA,
+        ess_biv_200       = NA,
+        ess_biv_1000      = NA,
+        
+        ess_biv_new_50    = NA,
+        ess_biv_new_200   = NA,
+        ess_biv_new_1000  = NA,
+        
+        # Failure 
+        failed_biv_1000     = NA,
+        failed_biv_new_1000 = NA
       ))
     })
   }, mc.cores = n_cores, mc.preschedule = TRUE, mc.set.seed = TRUE)
@@ -249,8 +373,6 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
   
   # Combine the replicates into a single data frame
   results_df        <- do.call(rbind, results_list)
-  results_df$tau2   <- tau2
-  results_df$delta  <- delta
   results_df$time_min <- as.numeric(difftime(end, start, units = "mins"))
   
   return(results_df)
@@ -293,6 +415,7 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
   
   # Bias calculations
   cols_to_avg <- c("full.reml", "full.pm", "naive.uni.reml", "naive.uni.pm", "naive.biv", 
+                   "naive.uni_new_reml", "naive.uni_new_pm", "naive.biv", "naive.biv_new", 
                    "uni.reml_50", "uni.reml_200", "uni.reml_1000",
                    "uni.pm_50", "uni.pm_200", "uni.pm_1000",
                    "uni_new.reml_50", "uni_new.reml_200", "uni_new.reml_1000",
