@@ -35,7 +35,7 @@ safe_adj_uni <- function(mi, m_use, delta, method.re) {
 
   tryCatch({
     mi_subset <- subset_mi(mi, m_use)
-    res <- adj_univariate(mi_subset, delta = delta, method.re = method.re, ess.tracking = TRUE)
+    res <- adj_univariate(mi_subset, delta = delta, method.re = method.re, track.ess = TRUE)
     return(c(est = res$Estimate[1], ess = res$ess[1]))
   }, error = function(e) {
     return(c(est = NA_real_, ess = NA_real_))

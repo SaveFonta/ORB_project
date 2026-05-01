@@ -156,7 +156,7 @@ adj_univariate <- function(mi_results, delta = 0.5, select_type = "zscore", meth
   M            <- nrow(draws)
   
 
-    # if nothing missing, return null
+    # if nothing missing, return null, will handle better in the outer loop of the simulation
   if (length(unrep_idx) == 0) return(NULL)
 
   
@@ -485,7 +485,7 @@ adj_bivariate <- function(mi_results, delta = 0.5, select_type = "zscore", metho
   total_var   <- var_within + var_between #length 2 vector
 
   if (length(theta_adj) != length(total_var) ) stop ("Something is off in the dimension of outcomes")
-  results_df <- data.frame(
+  out <- data.frame(
     Outcome  = c("O1", "O2"),
     Approach = paste("Bivariate Selection on", select_type),
     Estimate = theta_adj,
@@ -494,17 +494,18 @@ adj_bivariate <- function(mi_results, delta = 0.5, select_type = "zscore", metho
     CI_Upper = theta_adj + 1.96 * sqrt(total_var)
   )
 
-    rownames(results_df) <- NULL
+    rownames(out) <- NULL
 
     if (track.ess) {
       ess <- 1 / sum(w_norm^2)
-      out$ess <- ess }
+      out$ess <- ess
+    }
 
     if (track.failed.proportion) { 
       failed.proportion <- sum(!valid) / M
       out$failed.proportion <- failed.proportion
     }
-    return(results_df)
+    return(out)
 }
 
 
