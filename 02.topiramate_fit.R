@@ -3,39 +3,6 @@ df_topiramate <- readRDS("data/df_topiramate.RDS")
 
 
 
-#quick test
-biv_mi_results <- run_bivariate_imputation(
-  data = df_topiramate, 
-  theta_cols = c("log_RR1", "log_RR2"), 
-  se_cols = c("se_RR1", "se_RR2"), 
-  rho_w = 0.7, 
-  m = 50, new_version = FALSE 
-)
-
-
-set.seed(1)
-biv_adj_zscore <- adj_bivariate(
-  mi_results = biv_mi_results, 
-  delta = 0.5, 
-  select_type = "zscore")
-
-
-
-set.seed(1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 set.seed(1)
 measures <- c("OR", "RR")
@@ -81,8 +48,8 @@ for (meas in measures) {
     )
     
     #  Adj - Effect and Z-score
-    a_eff <- adj_univariate(mi, delta = 0.5, select_type = "effect")
-    a_z   <- adj_univariate(mi, delta = 0.5, select_type = "zscore")
+    a_eff <- adj_univariate(mi, delta = 0.5, select_type = "effect", track.ess = FALSE)
+    a_z   <- adj_univariate(mi, delta = 0.5, select_type = "zscore", track.ess = FALSE)
     
     # Stack 
     tmp <- rbind(naive_df, a_eff, a_z)
@@ -199,8 +166,8 @@ for (rho in rhos) {
         )
     
     # Calculate both Adjustments (each return a 2-row dataframe for O1 and O2)
-    a_eff <- adj_bivariate(mi_biv, delta = 0.5, select_type = "effect")
-    a_z   <- adj_bivariate(mi_biv, delta = 0.5, select_type = "zscore")
+    a_eff <- adj_bivariate(mi_biv, delta = 0.5, select_type = "effect", track.ess = FALSE, track.failed.proportion = FALSE)
+    a_z   <- adj_bivariate(mi_biv, delta = 0.5, select_type = "zscore", track.ess = FALSE, track.failed.proportion = FALSE)
     
     # stack them
     tmp <- rbind(naive_df, a_eff, a_z)
