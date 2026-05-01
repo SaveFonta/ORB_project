@@ -8,7 +8,7 @@ RNGkind("L'Ecuyer-CMRG")
 set.seed(1)
 
 # Simulation parameters
-n_sim <- 1000
+n_sim <- 1
 true_theta <- 0.4
 n_cores <- 25
 

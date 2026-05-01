@@ -1,0 +1,10 @@
+10 aprile 
+Diciamo che univariate è corretto. 
+Rileggi il bivariate ma dovrebbe essere corretto. 
+
+L'esempio del topiramate comunque non è fatto perfetto. Bisogna fare bene la fase di stima di rho che è fatta male
+
+
+Devo rileggere il codice bivariate e poi lanciare le simualzione new vs vecchio per capire 
+
+Poi la grid ha dei numeri strani, non è corretta.

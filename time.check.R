@@ -4,50 +4,28 @@ library(parallel)
 # Single simulation replicate - how long does it take?
 source("00.functions.R")
 
+RNGkind("L'Ecuyer-CMRG")
 set.seed(1)
-full_data <- generate_bivariate_ma(K = 25, theta = c(0.4, 0.4), rho_w = 0.4, tau2 = c(0.06, 0.06))
-obs_data  <- impose_orb(full_data, p1 = 0.4, delta_sim = 0.7, select_type = "zscore")
-
-# Time each component separately
-# t1 <- system.time({
-#   mi_uni <- run_univariate_imputation(obs_data, theta_col = "O1_yi", se_col = "O1_sei", 
-#                                       new_version = FALSE, method.re = "REML", m = 1000)
-# })
-
-# t2 <- system.time({
-#   adj_univariate(mi_uni, delta = 0.7, method.re = "REML")
-# })
-
-# t3 <- system.time({
-#   mi_biv <- run_bivariate_imputation(obs_data, theta_cols = c("O1_yi", "O2_yi"),
-#                                      se_cols = c("O1_sei", "O2_sei"), 
-#                                      new_version = FALSE, rho_w = 0.4, m = 1000)
-# })
-
-# t4 <- system.time({
-#   adj_bivariate(mi_biv, delta = 0.7)
-# } )
-
-# cat("run_univariate_imputation: ", t1["elapsed"], "s\n")
-# cat("adj_univariate:            ", t2["elapsed"], "s\n")
-# cat("run_bivariate_imputation:  ", t3["elapsed"], "s\n")
-# cat("adj_bivariate:             ", t4["elapsed"], "s\n")
-# cat("Total per replicate:       ", sum(t1["elapsed"],t2["elapsed"],t3["elapsed"],t4["elapsed"]), "s\n")
-# cat("Estimated total (1000 sim x 6 scenarios / n_cores): ",
-   #  sum(t1["elapsed"],t2["elapsed"],t3["elapsed"],t4["elapsed"]) * 1000 * 6 / 20 / 60, "mins\n")
 
 
-source("00.functions.R")
+
 
 # --------------------------------------------------------
 # wrapper: for errors to continue
 # --------------------------------------------------------
 safe_adj <- function(mi, m_use, delta) {
   if (is.null(mi)) return(NA_real_)
-  tryCatch(
-    adj_bivariate(within(mi, draws <- draws[1:m_use, ]), delta = delta)$Estimate[1],
-    error = function(e) NA_real_
-  )
+
+  mi_subset$draws <- mi_subset$draws[1:m_use, , drop = FALSE]
+
+  tryCatch({
+    mi_subset <- mi
+    mi_subset$draws <- mi_subset$draws[1:m_use, , drop = FALSE]
+    
+    # Extract the Estimate for Outcome 1
+    res <- adj_bivariate(mi_subset, delta = delta, select_type = "zscore")
+    return(res$Estimate[1])
+  }, error = function(e) return(NA_real_))
 }
 
 # --------------------------------------------------------
@@ -60,21 +38,31 @@ run_M_sensitivity <- function(K, tau2, delta_sim, seeds = c(1, 2, 3)) {
   rows <- lapply(seeds, function(seed) {
     set.seed(seed)
 
+    # generate data
     full_data <- generate_bivariate_ma(K = K, theta = c(0.4, 0.4),
                                        rho_w = 0.4, tau2 = c(tau2, tau2))
+
+    # impose orb
     obs_data  <- impose_orb(full_data, p1 = 0.4, delta_sim = delta_sim,
-                            select_type = "zscore")
+                            select_type = "zscore" , orb.se = TRUE)
+ 
+    # impute se
+    obs_data <- impute_missing_se(data = obs_data, 
+                                  target_theta_col = "O1_yi", 
+                                  target_se_col = "O1_sei", 
+                                  n_col = "n_total")
+
+    # bivariate
     mi_biv    <- run_bivariate_imputation(obs_data,
                                           theta_cols = c("O1_yi", "O2_yi"),
                                           se_cols    = c("O1_sei", "O2_sei"),
                                           rho_w = 0.4, m = 1000)
 
+    # m
     r50   <- safe_adj(mi_biv, m_use = 50,   delta = delta_sim)
     r200  <- safe_adj(mi_biv, m_use = 200,  delta = delta_sim)
     r1000 <- safe_adj(mi_biv, m_use = 1000, delta = delta_sim)
 
-    cat(sprintf("  Seed %d  |  M=50: %.4f  |  M=200: %.4f  |  M=1000: %.4f\n",
-                seed, r50, r200, r1000))
 
     data.frame(K = K, tau2 = tau2, delta = delta_sim,
                seed = seed, M50 = r50, M200 = r200, M1000 = r1000)
@@ -119,3 +107,37 @@ saveRDS(results_df, file = "data/M_sensitivity.rds")
 
 cat("\n\n===== FULL RESULTS TABLE =====\n")
 print(results_df)
+
+library(dplyr)
+
+obj <- readRDS("data/M_sensitivity.rds")
+
+RES <- obj  |> 
+  mutate (
+    diff.50 = abs(M50 - M1000), 
+    diff.200 = abs(M200 - M1000)
+   )
+
+round(RES,3)
+
+mean(RES$diff.50, na.rm = TRUE)
+mean(RES$diff.200, na.rm = TRUE)
+library(ggplot2)
+library(tidyr)
+
+long <- obj  |> 
+    pivot_longer(cols = c("M50", "M200", "M1000"),
+                 names_to = "M_value",
+                 values_to = "estimate") |>
+    mutate(scenario = paste("K =", K, "| tau2 =", tau2, "| delta =", delta))
+
+# Create faceted plot
+ggplot(long, aes(x = M_value, y = estimate, color = as.factor(seed), group = seed)) +
+  geom_point(size = 2) +
+  geom_line() +
+  facet_wrap(~scenario) +
+  labs(title = "How much does M affect the results?",
+       x = "Number of Imputations",
+       y = "Estimate",
+       color = "Seed") +
+  theme_bw()

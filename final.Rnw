@@ -1,0 +1,141 @@
+% final.Rnw
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\begin{document}
+
+\section*{Summary}
+This reports what I did and what I changed in the ORB project
+
+
+\subsection*{Functions}
+Inside \texttt{00.functions.R} there are 9 functions
+
+
+
+\subsubsection{\texttt{impute\_missing\_se(data, target\_theta\_col, target\_se\_col, n\_col)}}
+ Impute missing standard errors for one outcome using the reported studies following the formula from Copas. 
+
+
+
+
+
+\subsubsection{\texttt{run\_univariate\_imputation(data, theta\_col, se\_col, m = 1000, new\_version = FALSE, method.re = "REML")}}
+This generates multiple imputations for ONE partially missing outcome under MAR assumption. 
+
+It follows a few steps: 
+
+\begin{itemize}
+	\item Reorders data as reported first, unreported second.
+	\item Fits a naive random-effects meta-analysis on only the reported studies with \texttt{metafor::rma}.
+	\item Builds a total covariance matrix $\Sigma$.
+	\item Partitions $\Sigma$ into reported and unreported.
+	\item Computes conditional means and covariance for missing effects and draws $m$ imputations with
+		\texttt{MASS::mvrnorm}.
+\end{itemize}
+
+Note that selecting \texttt{new\_version = TRUE} uses the formula: 
+
+\begin{equation} \label{eq:sigma_uni}
+\Sigma_j = \mathrm{diag}(\sigma_{1j}^2 + \tau_j^2, \dots, \sigma_{Kj}^2 + \tau_j^2) + \mathrm{SE}(\hat{\theta}_{j, \mathrm{MA}})^2 J_K
+\end{equation}
+
+while if \texttt{new\_version = FALSE}, then $\tau^2$ on the diagonal is omitted.
+
+
+
+\subsubsection{\texttt{adj\_univariate(mi\_results, delta = 0.5, select\_type = "zscore", method.re = "REML", track.ess)}}
+Applies ORB importance sampling on the imputed datasets outputted by the function \texttt{run\_univariate\_imputation}. 
+
+What it does is: 
+\begin{itemize}
+	\item For each imputed dataset, computes log-weights from either:
+	\begin{itemize}
+		\item z-scores ($\theta/\text{SE}$), or
+		\item raw effects ($\theta$).
+	\end{itemize}
+	\item Refits \texttt{rma} for each completed dataset.
+	\item Normalizes weights using log-sum-exp (result is the same as using classic normalization, but more stable).
+	\item Computes weighted estimate and variance decomposition using paper formulas .
+\end{itemize}
+
+
+If \texttt{track.ess} is \texttt{TRUE}, then an additional column is added to the final df containing the Effective Sample size to evaluate the IS weights, 
+computed as $\frac{1}{\sum{w_{norm}^2}}$. The distribution of ESS could be added (or not) to the final table as a diagnostic for IS. 
+
+
+
+\paragraph{\texttt{run\_bivariate\_imputation(data, theta\_cols, se\_cols, rho\_w = 0.4, m = 1000, new\_version = FALSE, method.re = "REML")}}
+  This Generates imputations under ORB when two outcomes modeled jointly.
+
+ When we only have a few studies, the estimate of $\Psi$ is probably super innacurate. 
+	I see two ways to solve this: either we fall back to \texttt{struct = "VC"} to make it easier for REML to estimate the matrix, since it doesnt have to estimate
+	the off diagonals (no $p_B$), or we fall back to the formula without $\tau^2$ \footnote{Note that this problem of few studies can come from also in the univaraite case for $\hat{tau}^2$}
+
+\paragraph{\texttt{adj\_bivariate(mi\_results, delta = 0.5, select\_type = "zscore", method.re = "REML")}}
+Applies ORB importance sampling on the imputed datasets outputted by the function \texttt{run\_bivariate\_imputation}. 
+
+Note that I compute only one weight per imputation that is used for both outcomes
+
+
+\paragraph{\texttt{generate\_bivariate\_ma(K = 12, theta = c(0.4, 0.4), tau2 = c(0.06, 0.06), rho\_b = 0.4, rho\_w = 0.4, n\_arm = 50)}}
+Simulate complete bivariate meta-analysis data before ORB is imposed.
+
+
+
+
+
+\paragraph{\texttt{impose\_orb(data, p1 = 0.4, delta\_sim = 0.5, select\_type = "zscore", orb.se = TRUE)}}
+Impose ORB on Outcome 1 in simulated data.
+
+It finallly returns a data frame with ORB-induced missingness for Outcome 1.
+
+Note, at the beginning I wasn't sure wheter also the SEs were omitted,  so I added \texttt{orb.se}, if \texttt{TRUE}, then also se are omitted. 
+
+\subsection*{Some comments}
+\begin{itemize}
+	\item I left a note inside \texttt{run\_bivariate\_imputation()} about this, but I rewrite it:
+	When we only have a few studies, the estimate of $\Psi$ is probably super innacurate. 
+	I see two ways to solve this: either we fall back to \texttt{struct = "VC"} to make it easier for REML to estimate the matrix, since it doesnt have to estimate
+	the off diagonals (no $p_B$), or we fall back to the original formula without $\hat{\tau}^2$ \footnote{Note that this problem of few studies can come from also in the univaraite case for $\hat{tau}^2$}. 
+	My only point is that from the mathematical standpoint, including $\hat{Psi}$ (or $\hat{tau}^2$) is the correct version. Here is a small conceptual proof. 
+
+	\begin{proof}
+The old formula for the covariance matrix comes from the Fixed effect decomposition, where we assume tha for study $i$, $\hat{\theta}_i = \hat{\mu} + \epsilon_i$. Here, $Var(\hat{\mu}) = \text{SE}(\hat{\theta}_{MA})^2$ and $Var(\epsilon_i) = \sigma_i^2$. 
+
+Since the overall mean uncertainty and the sampling errors are independent, then: $$Var(\hat{\theta}_i) = Var(\hat{\mu}  + \epsilon_i) = Var(\hat{\mu}) + Var(\epsilon_i)$$
+$$Var(\hat{\theta}_i) = \text{SE}(\hat{\theta}_{MA})^2  + \sigma_i^2$$. These are the diagonal elements of the covariance matrix. 
+
+For the off diagonal: 
+$$Cov(\hat{\theta}_i, \hat{\theta}_k) = Cov(\hat{\mu}  + \epsilon_i, \hat{\mu}  + \epsilon_k) = Var(\hat{\mu}) = \text{SE}(\hat{\theta}_{MA})^2$$ 
+
+
+
+But we are only fitting Random Effects, so: 
+
+The estimated value $\hat{\theta}_i$ for study $i$ is decomposed as:
+$\hat{\theta}_i = \hat{\mu}+\delta_i + \epsilon_i$
+
+Where we have a similar result as before, but we also have the random effect $\delta_i \sim N(0, \hat{\tau}^2)$. 
+
+Since the overall mean uncertainty, the random effects, and the sampling errors are independent, then: 
+\begin{itemize}
+    \item \textbf{Diagonal elements: } $$Var(\hat{\theta}_i) = Var(\hat{\mu} + \delta_i + \epsilon_i) = Var(\hat{\mu}) + Var(\delta_i) + Var(\epsilon_i)$$$$Var(\hat{\theta}_i) = \text{SE}(\hat{\theta}_{MA})^2 + \tau^2 + \sigma_i^2$$. 
+    \item \textbf{Off-Diagonal elements: } $$Cov(\hat{\theta}_i, \hat{\theta}_k) = Cov(\hat{\mu} + \delta_i + \epsilon_i, \hat{\mu} + \delta_k + \epsilon_k) = Var(\hat{\mu}) = \text{SE}(\hat{\theta}_{MA})^2$$ 
+\end{itemize}
+
+
+Therefore the final formula would be: $$\Sigma_{RE} = \text{diag}(\sigma_1^2 + \hat{\tau}^2, ..., \sigma_K^2 + \hat{\tau}^2) + \text{SE}(\hat{\theta}_{MA})^2 \mathbf{J}_K$$ 
+And we can easily generalize to the bivariate case
+
+\end{proof}
+
+
+Additionaly I think using the hat conveys more clearly the idea that those are estimated parameters, but this is just a notation decision. 
+
+\end{itemize}
+
+
+
+\end{document}
+ 
