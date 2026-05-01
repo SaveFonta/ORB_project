@@ -270,17 +270,6 @@ if (select_type == "zscore") {
 
 
 
-
-
-
-dim(t(iris[, c("Sepal.Length", "Sepal.Width")]))
-dim(iris$Sepal.Length)
-names(iris)
-
-mm <- matrix (1:9, 3, 3)
-as.character ( t ( mm[,1:2]) )
-
-
 # ---------------------------
 ## Bivariate functions 
 # ----------------------------

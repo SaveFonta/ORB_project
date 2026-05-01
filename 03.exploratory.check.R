@@ -166,6 +166,7 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
       return(data.frame(
         K              = K,
         full.reml      = est_full_reml, 
+        full.pm=est_full_pm,
         naive.uni.reml = naive.uni.reml, 
         naive.uni.pm   = naive.uni.pm,
         naive.biv      = naive.biv, 
