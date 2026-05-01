@@ -145,7 +145,7 @@ run_univariate_imputation <- function(data, theta_col = "log_RR2", se_col = "se_
 #  Importance Sampling 
 # --------------------------
 
-adj_univariate <- function(mi_results, delta = 0.5, select_type = "zscore", method.re = "REML") {
+adj_univariate <- function(mi_results, delta = 0.5, select_type = "zscore", method.re = "REML", track.ess = TRUE) {
 
   draws        <- mi_results$draws
   data_ordered <- mi_results$data_ordered
@@ -213,14 +213,23 @@ if (select_type == "zscore") {
   var_within <- sum(w_norm * var_MA_m)
   var_between <- sum(w_norm * (theta_MA_m - theta_adj)^2)
   total_var <- var_within + var_between
+  
 
-  data.frame(
+  out <- data.frame(
     Approach = paste("Selection on", select_type),
     Estimate = theta_adj,
     SE       = sqrt(total_var),
     CI_Lower = theta_adj - 1.96 * sqrt(total_var),
     CI_Upper = theta_adj + 1.96 * sqrt(total_var)
   )
+
+    if (track.ess) {
+      ess <- 1 / sum(w_norm^2)
+      out$ess <- ess
+    }
+
+  return(out)
+
 }
 
 
@@ -403,13 +412,13 @@ run_bivariate_imputation <- function(data, theta_cols, se_cols, rho_w = 0.4, m =
 
 
 
-adj_bivariate <- function(mi_results, delta = 0.5, select_type = "zscore", method.re = "REML") {
+adj_bivariate <- function(mi_results, delta = 0.5, select_type = "zscore", method.re = "REML", track.failed.proportion = TRUE, track.ess = TRUE) {
 
   draws <- mi_results$draws
   alternated.df <- mi_results$alternated.df
   unrep_idx <- mi_results$unrep_idx
   V_full <- mi_results$V_full
-  
+
   if (!is.matrix(draws)) draws <- matrix(draws, ncol = length(unrep_idx))
   M <- nrow(draws)
 
@@ -482,12 +491,19 @@ adj_bivariate <- function(mi_results, delta = 0.5, select_type = "zscore", metho
     Estimate = theta_adj,
     SE       = sqrt(total_var),
     CI_Lower = theta_adj - 1.96 * sqrt(total_var),
-    CI_Upper = theta_adj + 1.96 * sqrt(total_var),
-    Failed.proportion = sum(!valid) / M
+    CI_Upper = theta_adj + 1.96 * sqrt(total_var)
   )
 
     rownames(results_df) <- NULL
 
+    if (track.ess) {
+      ess <- 1 / sum(w_norm^2)
+      out$ess <- ess }
+
+    if (track.failed.proportion) { 
+      failed.proportion <- sum(!valid) / M
+      out$failed.proportion <- failed.proportion
+    }
     return(results_df)
 }
 
@@ -553,8 +569,7 @@ generate_bivariate_ma <- function(K = 12, theta = c(0.4, 0.4), tau2 = c(0.06, 0.
   Psi <- matrix(c(tau2[1], cov_b, cov_b, tau2[2]), 2, 2)
   
   # True study-specific effects (bivariate normal)
-  theta_i <- mvrnorm(n = K, mu = theta, Sigma = Psi)
-  
+  theta_i <- matrix(MASS::mvrnorm(n = K, mu = theta, Sigma = Psi), nrow = K, ncol = 2)  
   
   #  matrix V for Wishart distribution
   V_scale <- (1 / ((n_arm - 1) * n_arm)) * matrix(c(1, rho_w, rho_w, 1), 2, 2)
@@ -566,9 +581,11 @@ generate_bivariate_ma <- function(K = 12, theta = c(0.4, 0.4), tau2 = c(0.06, 0.
   
   for (i in 1:K) {
     #  within-study covariance matrix for study i using Wishart (Sigma_i)
-    Sigma_i <- rWishart(n = 1, df = df_wishart, Sigma = V_scale)[,,1]
+    Sigma_i <- stats::rWishart(n = 1, df = df_wishart, Sigma = V_scale)[,,1]
     
     # Draw observed effects (bivariate)
+    # sample the observed value from a Normal centerd in the true value (sampled above)
+    # and with variance from Widhart
     y_obs[i, ] <- mvrnorm(n = 1, mu = theta_i[i, ], Sigma = Sigma_i)
     
     # Extract standard errors
@@ -578,6 +595,7 @@ generate_bivariate_ma <- function(K = 12, theta = c(0.4, 0.4), tau2 = c(0.06, 0.
   
   data <- data.frame(
     study_id = 1:K,
+    n_total = 2 * n_arm,
     O1_yi = y_obs[, 1], O1_sei = se_obs[, 1],
     O2_yi = y_obs[, 2], O2_sei = se_obs[, 2]
   )
@@ -616,14 +634,14 @@ logit <- function(p) log(p / (1 - p))
 
 
 
-impose_orb <- function(data, p1 = 0.4, delta_sim = 0.5, select_type = "zscore", orb.se = FALSE, n.total = 100) {
+impose_orb <- function(data, p1 = 0.4, delta_sim = 0.5, select_type = "zscore", orb.se = TRUE) {
   
   #extract stuff from attributes
   theta1 <- attr(data, "theta1")
   tau2_1 <- attr(data, "tau2_1")
   n_arm <- attr(data, "n_arm")
 
-
+  n_total <- n_arm * 2 # we can safely assume that both arms have the same n
 
 
   # Determine the selection variable s_1 and its expected value E(s_1)
@@ -658,9 +676,9 @@ impose_orb <- function(data, p1 = 0.4, delta_sim = 0.5, select_type = "zscore", 
   if (orb.se) data_orb$O1_sei[reported_flag == 0] <- NA 
   
   # add the sample size column
-  data_orb$n.total <- n.total
+  data_orb$n_total <- n_total
 
-
+  attr(data_orb, "actual_missing_rate") <- sum(reported_flag == 0) / nrow(data)
 
   return(data_orb)
 }
