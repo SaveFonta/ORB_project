@@ -8,7 +8,7 @@ RNGkind("L'Ecuyer-CMRG")
 set.seed(1)
 
 # Simulation parameters
-n_sim <- 1
+n_sim <- 1000
 true_theta <- 0.4
 n_cores <- 25
 
@@ -414,7 +414,7 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
   sub  <- subset(all_results_df, K == scenarios$K[s] & tau2 == scenarios$tau2[s] & delta == scenarios$delta[s])
   
   # Bias calculations
-  cols_to_avg <- c("full.reml", "full.pm", "naive.uni.reml", "naive.uni.pm", "naive.biv", 
+  cols_to_avg <- c("full.reml", "full.pm", "naive.uni.reml", "naive.uni.pm", 
                    "naive.uni_new_reml", "naive.uni_new_pm", "naive.biv", "naive.biv_new", 
                    "uni.reml_50", "uni.reml_200", "uni.reml_1000",
                    "uni.pm_50", "uni.pm_200", "uni.pm_1000",

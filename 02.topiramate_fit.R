@@ -225,12 +225,13 @@ table_2_biv_repro <- final_biv_df  |>
 # FINAL TABLE 2
 # ----------------------------------
 FULL_TABLE_2 <- rbind(table_2_uni_repro, table_2_biv_repro)
-# View(FULL_TABLE_2)
 
 saveRDS(FULL_TABLE_2, file = "data/Table_2.rds")
+cat("Table 2 created!!")
 
 
-
+# FULL_TABLE_2 <- readRDS("data/Table_2.rds")
+# View(FULL_TABLE_2)
 
 
 
