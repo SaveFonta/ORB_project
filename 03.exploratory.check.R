@@ -69,6 +69,11 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
                            control=list(stepadj=0.1, rel.tol=1e-8, maxiter=1000))
       est_full_reml <- as.numeric(res_full_reml$beta)
 
+      # --- Baseline (No ORB) - PM ---
+      res_full_pm <- rma(yi = O1_yi, sei = O1_sei, data = full_data, method = "PM", 
+                         control=list(stepadj=0.1, rel.tol=1e-8, maxiter=1000))
+      est_full_pm <- as.numeric(res_full_pm$beta)
+
       
       # Impose ORB 
       obs_data <- impose_orb(full_data, p1 = 0.4, delta_sim = delta, select_type = "zscore", orb.se = TRUE)
@@ -271,6 +276,12 @@ for (s in 1:nrow(scenarios)) {
 
 # Bind all scenarios together
 all_results_df <- do.call(rbind, all_results)
+saveRDS(all_results_df, file = "data/exploratory.check.rds")
+
+cat("'all_results_df' saved in 'data/exploratory.check.rds'")
+
+
+
 
 # ---------------------------------------------------------
 # Create the Summary Table
@@ -279,7 +290,7 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
   # Subset to the current scenario
   sub  <- subset(all_results_df, K == scenarios$K[s] & tau2 == scenarios$tau2[s] & delta == scenarios$delta[s])
   
-  # 1. Bias calculations
+  # Bias calculations
   cols_to_avg <- c("full.reml", "full.pm", "naive.uni.reml", "naive.uni.pm", "naive.biv", 
                    "uni.reml_50", "uni.reml_200", "uni.reml_1000",
                    "uni.pm_50", "uni.pm_200", "uni.pm_1000",
@@ -290,7 +301,7 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
   
   bias <- colMeans(sub[, cols_to_avg], na.rm = TRUE) - true_theta
   
-  # 2. Diagnostic Averages (Varying M)
+  # avg ess
   avg_ess_uni.reml_1000       <- mean(sub$ess_uni.reml_1000, na.rm = TRUE)
   avg_ess_uni.reml_50         <- mean(sub$ess_uni.reml_50, na.rm = TRUE)
   avg_ess_uni.reml_200        <- mean(sub$ess_uni.reml_200, na.rm = TRUE)
@@ -315,7 +326,7 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
   avg_failed_biv_1000         <- mean(sub$failed_biv_1000, na.rm = TRUE)
   avg_failed_biv_new_1000     <- mean(sub$failed_biv_new_1000, na.rm = TRUE)
   
-  # 3. Build the row
+  # build the row
   data.frame(K         = scenarios$K[s],
              tau2      = scenarios$tau2[s],
              delta     = scenarios$delta[s],
@@ -347,6 +358,6 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
              time_min  = round(sub$time_min[1], 2))
 }))
 
-# Print and save
+
 print(summary_tbl, row.names = FALSE)
 saveRDS(summary_tbl, file = "data/unbiasedness.comprehensive.rds")
