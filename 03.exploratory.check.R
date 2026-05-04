@@ -8,9 +8,9 @@ RNGkind("L'Ecuyer-CMRG")
 set.seed(1)
 
 # Simulation parameters
-n_sim <- 1000
+n_sim <- 1000 
 true_theta <- 0.4
-n_cores <- 25
+n_cores <- 31
 
 M <- 1000 # imputations
 
@@ -407,7 +407,7 @@ cat("'all_results_df' saved in 'data/exploratory.check.rds'")
 
 
 # ---------------------------------------------------------
-# Create the Summary Table
+# Summary Table
 # ---------------------------------------------------------
 summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
   # Subset to the current scenario
@@ -450,7 +450,7 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
   avg_failed_biv_1000         <- mean(sub$failed_biv_1000, na.rm = TRUE)
   avg_failed_biv_new_1000     <- mean(sub$failed_biv_new_1000, na.rm = TRUE)
   
-  # build the row
+  # build one row each scenario
   data.frame(K         = scenarios$K[s],
              tau2      = scenarios$tau2[s],
              delta     = scenarios$delta[s],
@@ -485,3 +485,6 @@ summary_tbl <- do.call(rbind, lapply(1:nrow(scenarios), function(s) {
 
 print(summary_tbl, row.names = FALSE)
 saveRDS(summary_tbl, file = "data/unbiasedness.comprehensive.rds")
+cat ("SIMULATION completed!")
+
+
