@@ -2,19 +2,46 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{placeins}
+\usepackage{hyperref}
+\usepackage{caption}
+
+\title{ORB project, summary of findings }
+\author{Saverio Fontana}
+
+
 \begin{document}
+\maketitle
+In this pdf I summarize all the findings on the ORB project. First of all clone the repo: 
+\href{https://github.com/SaveFonta/ORB_project}{[REPO]}. 
 
-\section*{Summary}
-This reports what I did and what I changed in the ORB project
+Then here are what you will find:
 
 
-\subsection*{Functions}
-Inside \texttt{00.functions.R} there are 9 functions
+<<loading, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Bias by varying M across scenarios">>=
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+library(scales)
 
+source("00.functions.R")
+
+@
+
+\section{final.Rnw}
+This is the file that allows to generate the report you are reading right now. Produce it by typing \texttt{make} on the console. 
+I also added on Github the \texttt{data} folder. Inside it you will find two \texttt{.rds} files. Those will allow you to compile this script without re-running the data generation scripts. 
+
+You can remove them from Git once downloaded. 
+
+\section{00.functions.R}
+In this script there are all the functions necessary to run the methods. Here is a quick overview.
 
 
 \subsubsection{\texttt{impute\_missing\_se(data, target\_theta\_col, target\_se\_col, n\_col)}}
- Impute missing standard errors for one outcome using the reported studies following the formula from Copas. 
+Impute missing standard errors for one outcome using the reported studies following the formula from Copas. 
 
 
 
@@ -44,7 +71,7 @@ while if \texttt{new\_version = FALSE}, then $\tau^2$ on the diagonal is omitted
 
 
 
-\subsubsection{\texttt{adj\_univariate(mi\_results, delta = 0.5, select\_type = "zscore", method.re = "REML", track.ess)}}
+\subsubsection{\texttt{adj\_univariate(mi\_results, delta = 0.5, select\_type = "zscore", method.re = "REML", track.ess = TRUE)}}
 Applies ORB importance sampling on the imputed datasets outputted by the function \texttt{run\_univariate\_imputation}. 
 
 What it does is: 
@@ -65,40 +92,317 @@ computed as $\frac{1}{\sum{w_{norm}^2}}$. The distribution of ESS could be added
 
 
 
-\paragraph{\texttt{run\_bivariate\_imputation(data, theta\_cols, se\_cols, rho\_w = 0.4, m = 1000, new\_version = FALSE, method.re = "REML")}}
-  This Generates imputations under ORB when two outcomes modeled jointly.
+\subsubsection{\texttt{run\_bivariate\_imputation(data, theta\_cols, se\_cols, rho\_w = 0.4, m = 1000, new\_version = FALSE, method.re = "REML")}}
+  This Generates imputations under ORB when two outcomes modeled jointly, the process is similar to the univariate.
 
- When we only have a few studies, the estimate of $\Psi$ is probably super innacurate. 
-	I see two ways to solve this: either we fall back to \texttt{struct = "VC"} to make it easier for REML to estimate the matrix, since it doesnt have to estimate
-	the off diagonals (no $p_B$), or we fall back to the formula without $\tau^2$ \footnote{Note that this problem of few studies can come from also in the univaraite case for $\hat{tau}^2$}
-
-\paragraph{\texttt{adj\_bivariate(mi\_results, delta = 0.5, select\_type = "zscore", method.re = "REML")}}
+\subsubsection{\texttt{adj\_bivariate(mi\_results, delta = 0.5, select\_type = "zscore", method.re = "REML", track.failed.proportion = TRUE, track.ess = TRUE)}}
 Applies ORB importance sampling on the imputed datasets outputted by the function \texttt{run\_bivariate\_imputation}. 
 
-Note that I compute only one weight per imputation that is used for both outcomes
+Note that I compute only one weight per imputation, and it is used for both outcomes! (The simulation study is not affected by this choice, but the topiramate example yess)
+
+Using \texttt{track.failed.proportion = TRUE}, we can also track the proportion of failed calls to \texttt{rma.mv}.
+
+\subsubsection{\texttt{generate\_bivariate\_ma(K = 12, theta = c(0.4, 0.4), tau2 = c(0.06, 0.06), rho\_b = 0.4, rho\_w = 0.4, n\_arm = 50)}}
+Simulate complete bivariate meta-analysis data without any missingness.
 
 
-\paragraph{\texttt{generate\_bivariate\_ma(K = 12, theta = c(0.4, 0.4), tau2 = c(0.06, 0.06), rho\_b = 0.4, rho\_w = 0.4, n\_arm = 50)}}
-Simulate complete bivariate meta-analysis data before ORB is imposed.
+
+
+
+\subsubsection{\texttt{impose\_orb(data, p1 = 0.4, delta\_sim = 0.5, select\_type = "zscore", orb.se = TRUE)}}
+Impose ORB on Outcome 1 in the simulated data from \texttt{generate\_bivariate\_ma}.
+
+It finally returns a data frame with ORB-induced missingness for Outcome 1.
+
+Note, at the beginning I wasn't sure wheter also the SEs were omitted,  so I added \texttt{orb.se}, if \texttt{TRUE}, then also SEs are omitted. 
+
+
+
+\section*{01.topiramate\_data.prep.R}
+To create the topiramate df.
+
+\section*{02.topiramate\_fit.R}
+To fit what we obtained from \texttt{01.topiramate\_data.prep.R}, it allows to compute Table 2 of the paper. 
+
+\textbf{Note:}  I fit it using the old method \texttt{new\_version = FALSE} for the covariance matrix, but it can be easily changed for the new version.
+
+\section*{03.exploratory.check.R}
+In this script I ran a small simulation study: 
+I generated data with $K$ studies,  true effects theta = (0.4, 0.4), between-study heterogeneity $\tau^2$, $\rho_B$ and $\rho_W$ fixed at 0.4. 
+Then Outcome 1 is made missing with strength $\delta$ and $p_1 = 0.4$ expected missing rate, using z-score selection. Missing SEs are imputed using Copas formula.
+
+Scenarios evaluated: 12 combinations of $K \in \{6, 25\} \times \tau^2 \in \{0.06, 0.36\} \times \delta \in \{0, 0.5, 1\}$, each with 1000 Monte Carlo replicates.
+NOTE that the model is always correctly specified (e.g. if I generate data using $\delta$ = 0.5, then also the fit is made with $\delta$ = 0.5)
+
+Methods compared per each replicate:
+
+\begin{itemize}
+	\item Baseline: full data REML and PM (like an oracle, before imposing ORB)
+	\item Naive: unadjusted estimates, obtained from reported studies only (old and new Sigma versions, uni and biv)
+	\item Adjusted univariate: old and new Sigma, REML and PM, at $M \in \{50, 200, 1000\}$
+	\item Adjusted bivariate: old and new Sigma, at $M \in \{50, 200, 1000\}$
+\end{itemize}
+
+
+I also saved the \texttt{ess} for each method that involve Importance Sampling. I wanted to use it as diagnostic but now I am not sure anymore, 
+can be useful in some discussion part for the paper, but can also be ignored. 
 
 
 
 
 
-\paragraph{\texttt{impose\_orb(data, p1 = 0.4, delta\_sim = 0.5, select\_type = "zscore", orb.se = TRUE)}}
-Impose ORB on Outcome 1 in simulated data.
 
-It finallly returns a data frame with ORB-induced missingness for Outcome 1.
 
-Note, at the beginning I wasn't sure wheter also the SEs were omitted,  so I added \texttt{orb.se}, if \texttt{TRUE}, then also se are omitted. 
+<<exploratory, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Bias by varying M across scenarios", fig.width=16, fig.height=20>>=
+summary_tbl <- readRDS("data/unbiasedness.comprehensive.rds")
 
-\subsection*{Some comments}
+summary_tbl2 <- summary_tbl |>
+  mutate(
+    scenario = paste0("K = ", K, ",  tau2 = ", tau2),
+    delta    = factor(delta, levels = c(0, 0.5, 1),
+                      labels = c("delta = 0", "delta = 0.5", "delta = 1")) # so I plot the different deltas in the same plot
+  )
+
+# --------------------------------
+# Inspect the bias 
+# --------------------------------
+
+# summary_tbl already contains bias (colMeans - true_theta), one col per method/M
+bias_cols <- c(
+  "full.reml", "full.pm",
+  "naive.uni.reml", "naive.uni.pm",
+  "naive.uni_new_reml", "naive.uni_new_pm",
+  "naive.biv", "naive.biv_new",
+  "uni.reml_50",     "uni.reml_200",     "uni.reml_1000",
+  "uni.pm_50",       "uni.pm_200",       "uni.pm_1000",
+  "uni_new.reml_50", "uni_new.reml_200", "uni_new.reml_1000",
+  "uni_new.pm_50",   "uni_new.pm_200",   "uni_new.pm_1000",
+  "biv_50",          "biv_200",          "biv_1000",
+  "biv_new_50",      "biv_new_200",      "biv_new_1000"
+)
+
+# Longer 
+df_bias <- summary_tbl2 |>
+  select(K, tau2, delta, scenario, all_of(bias_cols)) |>
+  #long for the bias cols
+  pivot_longer(cols = all_of(bias_cols), names_to = "col", values_to = "bias") |>
+  # take away the M where present, NA otw
+  mutate(
+    M      = case_when( #new column M, if col finished for _50,. ...
+      grepl("_50$",   col) ~ 50L,
+      grepl("_200$",  col) ~ 200L,
+      grepl("_1000$", col) ~ 1000L,
+      TRUE                 ~ NA_integer_
+    ), # leave only teh method name
+    method = sub("_(50|200|1000)$", "", col)
+  )
+
+# Change labels
+method_labels <- c(
+  "full.reml" = "Full REML",
+  "full.pm" = "Full PM",
+  "naive.uni.reml" = "Naive Uni REML",
+  "naive.uni.pm" = "Naive Uni PM",
+  "naive.uni_new_reml" = "Naive Uni REML (new)",
+  "naive.uni_new_pm" = "Naive Uni PM   (new)",
+  "naive.biv" = "Naive Biv",
+  "naive.biv_new" = "Naive Biv (new)",
+  "uni.reml" = "Uni REML (old)",
+  "uni.pm"= "Uni PM   (old)",
+  "uni_new.reml"= "Uni REML (new)",
+  "uni_new.pm" = "Uni PM   (new)",
+  "biv" = "Biv      (old)",
+  "biv_new"= "Biv      (new)"
+)
+
+df_bias <- df_bias |>
+  mutate(method_label = recode(method, !!!method_labels),
+         method_label = factor(method_label, levels = method_labels))
+
+
+
+# Subset only the ones I want to compare the M 
+df_bias_M.compare <- df_bias |> filter(!is.na(M))
+df_bias_naive     <- df_bias |> filter(is.na(M) & !method %in% c("full.reml", "full.pm"))
+ 
+ 
+ # Filter out the PM for visualisation since it is really similar to REML
+ # comment next line if you want to see the results for PM
+df_bias_M.compare <-  df_bias_M.compare |>
+                    filter (!method_label %in% c("Uni PM   (new)", "Uni PM   (old)"))
+
+ 
+# Plot with the 3 values of M on the X, the bias on y, color by delta 
+p_bias_vs_M <- ggplot(df_bias_M.compare,
+                      aes(x = M, y = bias, colour = delta, group = delta)) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey", linewidth = 0.2) + # line at bias = 0
+  geom_line(linewidth = 0.5) +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = c(50, 200, 1000)) +
+  scale_colour_manual(values = c("delta = 0" = "purple", "delta = 0.5" = "orange", "delta = 1" = "red")) +
+  facet_grid(method_label ~ scenario) + 
+  labs(title    = "Bias vs M",
+       x = "M (imputations)", y = "Bias", colour = NULL) +
+  theme_bw(base_size = 24) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank())
+
+p_bias_vs_M
+@
+\paragraph{Figure \ref{fig:exploratory}} shows the Bias across different scenarios (columns) and different methods (rows) when $M \in \{50, 200, 1000\}$. 
+As we could expect, as delta increases, the bias also increases. The difference in bias between 50 and 200 imputations is notable, but the difference in bias 
+between 200 and 1000 seems negligible. Interestingly, in the case of K = 6 for univariate (new), M = 1000 has an higher bias (in absolute value) than M = 200 and 50. 
+
+
+Note that if you wanna see the results with PM instead of REML, you just need to comment out a line of code in the .Rnw file, but the results are quite similar 
+so I decided to not report them here. 
+
+Maybe if the code takes too long, also using M = 200 can work? 
+
+\FloatBarrier
+
+
+<<Bias_REML, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Bias comparing different methods", fig.width=16, fig.height=20>>=
+
+M_PLOT <- 200 # can easily change this and see results with M = 1000
+ 
+df_plot  <- df_bias  |> 
+            filter (M == M_PLOT | is.na(M))  |> 
+            mutate(scenario_delta = paste0("K = ", K, ",  tau2 = ", tau2, ",  ", delta))
+
+
+# Remove the lines that uses PM, only focus on REML
+df_plot.reduced <- df_plot  |> 
+            filter (!method_label %in% c("Full PM", "Naive Uni PM", "Naive Uni PM   (new)", "Uni PM   (old)", "Uni PM   (new)"))
+
+df_plot.reduced |>
+  ggplot(aes(x = bias, y = method_label, colour = delta, shape = delta)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey", linewidth = 0.4) +
+  geom_point(size = 3) +
+  scale_x_continuous(limits = c(-0.09, 0.3)) +
+  scale_colour_manual(values = c("delta = 0" = "blue", "delta = 0.5" = "orange", "delta = 1" = "red")) +
+  scale_y_discrete(limits = rev) +
+  facet_wrap(~ scenario_delta, nrow = 4) +
+  labs(title = paste0("All methods: (using M = ", M_PLOT, ")"),
+       x = "Bias", y = NULL, colour = NULL, shape = NULL) +
+  theme_bw(base_size = 24) +
+  theme(legend.position  = "bottom",
+        panel.grid.minor = element_blank())
+@
+
+\paragraph{Figure \ref{fig:Bias_REML}} reports the bias across methods. Each column represents a $\delta$ value, the first two rows have K = 25, while the 3rd and 4th have K = 6. 
+Importantly, when $\delta$ = 0, all methods seems to provide unbiased results. The naive methods provides the worst performances consistently across all scenarios. 
+The behavior of the other methods change across scenarios but the new one seems to provide results close to zero bias more frequently. 
+
+
+Results obtained by using also PM for $\tau$ are in \ref{appendix}. 
+
+NOTE: if you wanna see the results with M = 1000, you just have to change one line of code in the .Rnw.
+
+
+\FloatBarrier 
+\subsection{Inspection of the possible failures}
+
+
+
+Here is all the type of failures that can happen in the simulations: 
+\begin{itemize}
+	\item ERROR 1. \texttt{impose\_orb()} produces no missingness (since it is based on \texttt{rbinom()}), when by chance no studies are set to NA. Intuitively more common when K small.
+	\item ERROR 2. \texttt{impose\_orb()} produces too much missingness.  Happens when fewer than 2 studies are left and the other are all set to NA. 
+	\item ERROR 3. \texttt{rma/rma.mv} fails to converge inside \texttt{adj\_univariate/adj\_bivariate}. I am only tracking it in the biv case in the column \texttt{'failed.proportion'}
+\end{itemize}
+
+
+
+
+<<fail.rate.1_2, echo=FALSE, warning=FALSE, message=FALSE>>=
+full.simulations <- readRDS(file = "data/exploratory.check.rds")
+
+# Errors due to the fact that impose_orb didn't create missingness
+na.full.reml.prop <- mean(is.na(full.simulations$full.reml)) * 100 
+na.full.reml.sum <- sum(is.na(full.simulations$full.reml)) 
+
+# Errors due to less than impose_orb created too much missingess (less than 2 studies left) 
+na.T1.reml.prop <- mean(is.na(full.simulations$uni.reml_1000)) * 100 - na.full.reml.prop
+na.T1.reml.sum <- sum(is.na(full.simulations$uni.reml_1000)) - na.full.reml.sum
+@
+
+\paragraph{Results:}
+We have a total of 12 scenarios, each run 1000 times. This mean that in total we have 12000 simulations.
+
+We observe a total of \Sexpr{na.T1.reml.sum} (\Sexpr{round(na.T1.reml.prop, 2)}\% out of the total simulations) ERROR 1
+
+And a total of \Sexpr{na.full.reml.sum} (\Sexpr{round(na.full.reml.prop, 2)}\% out of the total simulations) ERROR 2
+<<tables.fail.combined, echo=FALSE, warning=FALSE, message=FALSE, results='asis'>>=
+fmt_delta <- function(x) sub("\\.0$", "", format(x, trim = TRUE, scientific = FALSE))
+
+# Build combined table: n_total shared, then type1 and type2 counts and pct
+tbl1 <- full.simulations |>
+  group_by(K, tau2, delta) |>
+  summarise(n_total = n(),
+            n_err_type1 = sum(is.na(uni.reml_1000) & !is.na(full.reml)),
+            pct_type1 = round(n_err_type1 / n_total * 100, 1),
+            .groups = "drop")
+
+tbl2 <- full.simulations |>
+  group_by(K, tau2, delta) |>
+  summarise(n_err_type2 = sum(is.na(full.reml)),
+            pct_type2 = round(n_err_type2 / n() * 100, 1),
+            .groups = "drop")
+
+combined <- tbl1 |> left_join(tbl2, by = c("K", "tau2", "delta")) |>
+  mutate(delta = fmt_delta(delta),
+         pct_type1 = sprintf("%.2f%%", pct_type1),
+         pct_type2 = sprintf("%.2f%%", pct_type2)) |>
+  select(K, tau2, delta, n_total, n_err_type1, pct_type1, n_err_type2, pct_type2)
+
+knitr::kable(combined, format = "latex", booktabs = TRUE,
+             caption = "Proportions of Error Types 1 and 2 by scenario")
+@
+
+ \FloatBarrier
+Looking more in depth, we notice that out of the total, almost every ERROR 1 and ERROR 2 appear when K = 6.
+This mean that Bias estimates for K = 6 are based on approximately 950 replicates rather than 1000, which is still acceptable I'd say. 
+
+Here we instead report the proportion of failed \texttt{rma} calls (ERROR 3)
+
+<<fail.rate.table, echo=FALSE, warning=FALSE, message=FALSE, results='asis'>>=
+summary_tbl |>
+  select(K, tau2, delta, avg_Fail_Biv_M1000, avg_Fail_Biv_New_M1000) |>
+  mutate(delta = fmt_delta(delta)) |>
+  mutate(across(c(avg_Fail_Biv_M1000, avg_Fail_Biv_New_M1000),
+                ~ sprintf("%.2f%%", . * 100))) |>
+  rename(`Biv old (%)` = avg_Fail_Biv_M1000,
+         `Biv new (%)` = avg_Fail_Biv_New_M1000) |>
+  knitr::kable(format = "latex", caption = "Proportion of Error Number 3", booktabs = TRUE)
+@
+
+\FloatBarrier
+\section{04.simulation\_study.R}
+In this script I tried to give a blueprint for how to use these functions for the simulation study.
+There is an important note, since we saw that sometimes the \texttt{impose\_orb} function can give a full dataset with no ORB.
+I think there are 3 ways to solve this: 
+\begin{itemize}
+	\item Leave it like I did. My reason is that, if for example $p_1 = 0.2$, then maybe sometimes the fraction
+	of unreported for that specific draw is 40\%, but maybe some other time is zero. If we truncate the distribution by discarding the draws with $p_1 = 0$, I am not 
+	actually sure it is mathematically sound
+	\item use a repeat loop inside the lapply, to make it sample another df 
+	\item Change the impose\_orb function to redo the ORB in the case that it creates no missings
+\end{itemize}
+
+\textbf{NOTE}: I never ran the script fully, so I am not sure it wil work without any problems 
+
+
+
+
+
+
+\subsection{Some Final comments}
 \begin{itemize}
 	\item I left a note inside \texttt{run\_bivariate\_imputation()} about this, but I rewrite it:
 	When we only have a few studies, the estimate of $\Psi$ is probably super innacurate. 
 	I see two ways to solve this: either we fall back to \texttt{struct = "VC"} to make it easier for REML to estimate the matrix, since it doesnt have to estimate
-	the off diagonals (no $p_B$), or we fall back to the original formula without $\hat{\tau}^2$ \footnote{Note that this problem of few studies can come from also in the univaraite case for $\hat{tau}^2$}. 
-	My only point is that from the mathematical standpoint, including $\hat{Psi}$ (or $\hat{tau}^2$) is the correct version. Here is a small conceptual proof. 
+	the off diagonals ($p_B$), or we fall back to the original formula without $\hat{\Psi}^2$ \footnote{Note that this problem of few studies can come from also in the univariate case for $\hat{\tau}^2$}. 
+	My only point is that from the mathematical standpoint, including $\hat{\Psi}$ (or $\hat{\tau}^2$) is the correct version. Here is a small conceptual proof. 
 
 	\begin{proof}
 The old formula for the covariance matrix comes from the Fixed effect decomposition, where we assume tha for study $i$, $\hat{\theta}_i = \hat{\mu} + \epsilon_i$. Here, $Var(\hat{\mu}) = \text{SE}(\hat{\theta}_{MA})^2$ and $Var(\epsilon_i) = \sigma_i^2$. 
@@ -133,9 +437,28 @@ And we can easily generalize to the bivariate case
 
 Additionaly I think using the hat conveys more clearly the idea that those are estimated parameters, but this is just a notation decision. 
 
+\item in each script I used \texttt{RNGkind("L'Ecuyer-CMRG"); set.seed(1)}, I don't know if it should be mentioned in the paper. 
+
 \end{itemize}
 
 
+\section*{Appendix}
+\label{appendix}
+<<Bias_FULL,  echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Bias by varying M across scenarios, COMPLETE VERSION", fig.width=16, fig.height=20>>=
+ df_plot |>
+  ggplot(aes(x = bias, y = method_label, colour = delta, shape = delta)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey", linewidth = 0.4) +
+  geom_point(size = 3) +
+  scale_x_continuous(limits = c(-0.09, 0.3)) +
+  scale_colour_manual(values = c("delta = 0" = "blue", "delta = 0.5" = "orange", "delta = 1" = "red")) +
+    scale_y_discrete(limits = rev) + #reverse so we put FULL above
+  facet_wrap(~ scenario_delta, nrow = 4) +
+  labs(title = paste0("All methods: (using M = ", M_PLOT, ")"),
+       x = "Bias", y = NULL, colour = NULL, shape = NULL) +
+  theme_bw(base_size = 24) +
+  theme(legend.position  = "bottom",
+        panel.grid.minor = element_blank())
+@
 
 \end{document}
  

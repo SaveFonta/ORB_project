@@ -20,7 +20,7 @@ n_cores       <- 25
 # ---------------------------------------------------------
 scenarios_grid <- expand.grid(
   K           = c(6, 12, 25),                      
-  p1          = c(0, 0.2, 0.4),       # Should we actually include p1 = 0??
+  p1          = c(0, 0.2, 0.4),       # Should we actually include p1 = 0?? I wouldn't
   tau2_val    = c(0, 0.02, 0.06, 0.36),     
   theta_1     = c(0, 0.4, 0.8), 
   theta_2     = c(0, 0.4, 0.8),          
@@ -33,9 +33,11 @@ scenarios_grid <- expand.grid(
 )
 
 # ---------------------------------------------------------
-# Wrappers I wrote to handle the two cases of errors: 
-# 1) -> failure of convergence of rma inside imputation function (either for numerical issues or maybe cause there are less than 2 reported studies)
+# Wrappers I wrote to handle two cases of errors: 
+# 1) -> failure of convergence of rma inside imputation function (either for numerical issues or more probably cause there are less than 2 reported studies)
 # 2) -> failure of convergence of rma inside adjust function for numerical issues 
+
+# both ways it invalidates the whole draw also for the pther methods. Maybe can change this logic? Not sure
 # ---------------------------------------------------------
 
 safe_adj_uni <- function(mi, delta, sel_type) {
@@ -105,7 +107,7 @@ function_to_create <- function(scenario_idx) {
       
       # by chance, ORB sometimes doesnt create any missing outcomes (more common when K = 6), in that case we finish here this simulation returning the full model....
       # I don't know another way to handle this, cause we could even use some kind of repeat block in the case of no missingness.
-      # But this would bias a bit the results I think ? 
+      # But this would bias a bit the results I think ? Since we would condition the distribution of the draw only on those draws that produces missingness? 
 
       if (all(!is.na(obs_data$O1_yi))) return(NULL)
 

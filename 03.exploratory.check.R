@@ -378,6 +378,11 @@ run_comprehensive_scenario <- function(K, tau2, delta, n_sim, true_theta, n_core
   return(results_df)
 }
 
+
+# NOTE: I realized that if the impose_ORB creates no missingess, I hadle it easy at the beginning, but 'full.reml' and 'full.pm' still will have values while the others will all be NULL.
+# instead if impose_ORB creates too much missigness, i.e. it only leave one study or zero, then 'mi_uni_reml$res_naive$beta' will throw an error and it will fall back to the case where all columns are set to NA.
+# basically the wrapper 'safe_adj' is not that useful since it will crash anyway. 
+
 # ---------------------------------------------------------
 # Loop Over the Grid
 # ---------------------------------------------------------
