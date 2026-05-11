@@ -19,7 +19,7 @@ In this pdf I summarize all the findings on the ORB project. First of all clone 
 Then here are what you will find:
 
 
-<<loading, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Bias by varying M across scenarios">>=
+<<loading, echo=FALSE, warning=FALSE, message=FALSE>>=
 library(ggplot2)
 library(dplyr)
 library(tidyr)
@@ -34,7 +34,7 @@ source("00.functions.R")
 This is the file that allows to generate the report you are reading right now. Produce it by typing \texttt{make} on the console. 
 I also added on Github the \texttt{data} folder. Inside it you will find two \texttt{.rds} files. Those will allow you to compile this script without re-running the data generation scripts. 
 
-You can remove them from Git once downloaded. 
+You can remove those .rds files from Git once downloaded to keep the repo clean.
 
 \section{00.functions.R}
 In this script there are all the functions necessary to run the methods. Here is a quick overview.
@@ -88,12 +88,12 @@ What it does is:
 
 
 If \texttt{track.ess} is \texttt{TRUE}, then an additional column is added to the final df containing the Effective Sample size to evaluate the IS weights, 
-computed as $\frac{1}{\sum{w_{norm}^2}}$. The distribution of ESS could be added (or not) to the final table as a diagnostic for IS. 
+computed as $\frac{1}{\sum{w_{norm}^2}}$. The distribution of ESS could be added (or not) to the final tables in the paper as a diagnostic for IS. 
 
 
 
 \subsubsection{\texttt{run\_bivariate\_imputation(data, theta\_cols, se\_cols, rho\_w = 0.4, m = 1000, new\_version = FALSE, method.re = "REML")}}
-  This Generates imputations under ORB when two outcomes modeled jointly, the process is similar to the univariate.
+  This Generates imputations under MAR with two outcomes modeled jointly, the process is similar to the univariate.
 
 \subsubsection{\texttt{adj\_bivariate(mi\_results, delta = 0.5, select\_type = "zscore", method.re = "REML", track.failed.proportion = TRUE, track.ess = TRUE)}}
 Applies ORB importance sampling on the imputed datasets outputted by the function \texttt{run\_bivariate\_imputation}. 
@@ -110,11 +110,11 @@ Simulate complete bivariate meta-analysis data without any missingness.
 
 
 \subsubsection{\texttt{impose\_orb(data, p1 = 0.4, delta\_sim = 0.5, select\_type = "zscore", orb.se = TRUE)}}
-Impose ORB on Outcome 1 in the simulated data from \texttt{generate\_bivariate\_ma}.
+Impose ORB on Outcome 1 in the simulated data obtained from \texttt{generate\_bivariate\_ma}.
 
 It finally returns a data frame with ORB-induced missingness for Outcome 1.
 
-Note, at the beginning I wasn't sure wheter also the SEs were omitted,  so I added \texttt{orb.se}, if \texttt{TRUE}, then also SEs are omitted. 
+Note: at the beginning I wasn't sure wheter also the SEs were omitted,  so I added the parameter \texttt{orb.se}, if \texttt{TRUE}, then also SEs are omitted. 
 
 
 
@@ -151,8 +151,6 @@ can be useful in some discussion part for the paper, but can also be ignored.
 
 
 
-
-
 <<exploratory, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Bias by varying M across scenarios", fig.width=16, fig.height=20>>=
 summary_tbl <- readRDS("data/unbiasedness.comprehensive.rds")
 
@@ -183,7 +181,7 @@ bias_cols <- c(
 
 # Longer 
 df_bias <- summary_tbl2 |>
-  select(K, tau2, delta, scenario, all_of(bias_cols)) |>
+  dplyr::select(K, tau2, delta, scenario, all_of(bias_cols)) |>
   #long for the bias cols
   pivot_longer(cols = all_of(bias_cols), names_to = "col", values_to = "bias") |>
   # take away the M where present, NA otw
@@ -256,7 +254,7 @@ between 200 and 1000 seems negligible. Interestingly, in the case of K = 6 for u
 Note that if you wanna see the results with PM instead of REML, you just need to comment out a line of code in the .Rnw file, but the results are quite similar 
 so I decided to not report them here. 
 
-Maybe if the code takes too long, also using M = 200 can work? 
+Maybe if the code takes too long to run all the 30000 (and more) simulations, also using M = 200 can work? 
 
 \FloatBarrier
 
@@ -353,12 +351,12 @@ combined <- tbl1 |> left_join(tbl2, by = c("K", "tau2", "delta")) |>
   mutate(delta = fmt_delta(delta),
          pct_type1 = sprintf("%.2f%%", pct_type1),
          pct_type2 = sprintf("%.2f%%", pct_type2)) |>
-  select(K, tau2, delta, n_total, n_err_type1, pct_type1, n_err_type2, pct_type2)
+  dplyr::select(K, tau2, delta, n_total, n_err_type1, pct_type1, n_err_type2, pct_type2)
 
 knitr::kable(combined, format = "latex", booktabs = TRUE,
              caption = "Proportions of Error Types 1 and 2 by scenario")
 @
-
+ 
  \FloatBarrier
 Looking more in depth, we notice that out of the total, almost every ERROR 1 and ERROR 2 appear when K = 6.
 This mean that Bias estimates for K = 6 are based on approximately 950 replicates rather than 1000, which is still acceptable I'd say. 
@@ -367,7 +365,7 @@ Here we instead report the proportion of failed \texttt{rma} calls (ERROR 3)
 
 <<fail.rate.table, echo=FALSE, warning=FALSE, message=FALSE, results='asis'>>=
 summary_tbl |>
-  select(K, tau2, delta, avg_Fail_Biv_M1000, avg_Fail_Biv_New_M1000) |>
+  dplyr::select(K, tau2, delta, avg_Fail_Biv_M1000, avg_Fail_Biv_New_M1000) |>
   mutate(delta = fmt_delta(delta)) |>
   mutate(across(c(avg_Fail_Biv_M1000, avg_Fail_Biv_New_M1000),
                 ~ sprintf("%.2f%%", . * 100))) |>
