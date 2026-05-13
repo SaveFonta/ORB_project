@@ -127,7 +127,7 @@ function_to_create <- function(scenario_idx) {
       if (all(!is.na(obs_data$O1_yi))) {
         return( data.frame(full = est_full, 
                    naive_uni = est_full,
-                   naive_biv = est_full,
+                   naive_biv = est_full,   # actually, here we should have the est_full_biv. Should fit it above with rma.mv
                    uni = est_full, 
                    biv = est_full,
                    uni_ci_l = ci.lb_full, 
