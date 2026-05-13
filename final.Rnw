@@ -377,14 +377,11 @@ summary_tbl |>
 \FloatBarrier
 \section{04.simulation\_study.R}
 In this script I tried to give a blueprint for how to use these functions for the simulation study.
-There is an important note, since we saw that sometimes the \texttt{impose\_orb} function can give a full dataset with no ORB.
-I think there are 3 ways to solve this: 
+There is an important note, since we saw that sometimes the \texttt{impose\_orb} function can give a full dataset with no ORB or a dataset with too much ORB (less than 2 studies).
+I think the best way to solve it is: 
 \begin{itemize}
-	\item Leave it like I did. My reason is that, if for example $p_1 = 0.2$, then maybe sometimes the fraction
-	of unreported for that specific draw is 40\%, but maybe some other time is zero. If we truncate the distribution by discarding the draws with $p_1 = 0$, I am not 
-	actually sure it is mathematically sound
-	\item use a repeat loop inside the lapply, to make it sample another df 
-	\item Change the impose\_orb function to redo the ORB in the case that it creates no missings
+  \item in the case of no missingess, just report for each method the full model 
+  \item in the case of too much missingness, recreate the data and reimpose the orb, maybe using a \texttt{repeat} block
 \end{itemize}
 
 \textbf{NOTE}: I never ran the script fully, so I am not sure it wil work without any problems 
@@ -399,7 +396,7 @@ I think there are 3 ways to solve this:
 	\item I left a note inside \texttt{run\_bivariate\_imputation()} about this, but I rewrite it:
 	When we only have a few studies, the estimate of $\Psi$ is probably super innacurate. 
 	I see two ways to solve this: either we fall back to \texttt{struct = "VC"} to make it easier for REML to estimate the matrix, since it doesnt have to estimate
-	the off diagonals ($p_B$), or we fall back to the original formula without $\hat{\Psi}^2$ \footnote{Note that this problem of few studies can come from also in the univariate case for $\hat{\tau}^2$}. 
+	the off diagonals ($p_B$), or we fall back to the original formula without $\hat{\Psi}$ \footnote{Note that this problem of few studies can come from also in the univariate case for $\hat{\tau}^2$}. 
 	My only point is that from the mathematical standpoint, including $\hat{\Psi}$ (or $\hat{\tau}^2$) is the correct version. Here is a small conceptual proof. 
 
 	\begin{proof}

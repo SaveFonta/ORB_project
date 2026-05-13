@@ -60,6 +60,8 @@ safe_adj_biv <- function(mi, delta, sel_type) {
              ess = res$ess[1], fail = res$failed.proportion[1]))
   }, error = function(e) c(est = NA, ci_l = NA, ci_u = NA, ess = NA, fail = NA))
 }
+
+
 # ---------------------------------------------------------
 # MAIN FUNCTION
 # ---------------------------------------------------------
@@ -91,26 +93,52 @@ function_to_create <- function(scenario_idx) {
   # Run n_sim replicates for this specific row of the grid
   replicates <- lapply(1:n_sim, function(i) {
     tryCatch({
+
+      # by chance, ORB sometimes creates too much missing outcomes (ERROR 2), in that case ,
+      # we repeat the data generation as a whole
+      redraws <- 0 # count the redraws 
+
+      repeat{
       # Generate complete data
       full_data <- generate_bivariate_ma(K = K, theta = c(theta_1, theta_2), 
                                          tau2 = c(tau2_val, tau2_val),
                                          rho_b = rho_b, rho_w = rho_w)
       
+      # Impose ORB
+      obs_data <- impose_orb(full_data, p1 = p1, delta_sim = delta_sim, 
+                             select_type = select_type, orb.se = TRUE) 
+      
+     if (sum(!is.na(obs_data$O1_yi)) >= 2) {
+          break # go on if we have more than 2 studies 
+        }
+        
+        redraws <- redraws + 1
+      }
+
       # Baseline, full model (basically p_1 = 0)
       res_full <- rma(yi = O1_yi, sei = O1_sei, data = full_data, method = "REML")
       est_full <- as.numeric(res_full$beta)
       se_full  <- as.numeric(res_full$se)
-      
-      # Impose ORB
-      obs_data <- impose_orb(full_data, p1 = p1, delta_sim = delta_sim, 
-                             select_type = select_type, orb.se = TRUE)
-      
-      # by chance, ORB sometimes doesnt create any missing outcomes (more common when K = 6), in that case we finish here this simulation returning the full model....
-      # I don't know another way to handle this, cause we could even use some kind of repeat block in the case of no missingness.
-      # But this would bias a bit the results I think ? Since we would condition the distribution of the draw only on those draws that produces missingness? 
+      ci.lb_full <- as.numeric(res_full$ci.lb)
+      ci.ub_full <- as.numeric(res_full$ci.ub)
 
-      if (all(!is.na(obs_data$O1_yi))) return(NULL)
-
+      # by chance, ORB sometimes doesnt create any missing outcomes (ERROR 1), in that case ,
+      # we just don't care and all the methods inherit from the full model 
+      if (all(!is.na(obs_data$O1_yi))) {
+        return( data.frame(full = est_full, 
+                   naive_uni = est_full,
+                   naive_biv = est_full,
+                   uni = est_full, 
+                   biv = est_full,
+                   uni_ci_l = ci.lb_full, 
+                   uni_ci_u = ci.ub_full,
+                   biv_ci_l = ci.lb_full, 
+                   biv_ci_u = ci.ub_full,
+                   u_ess = NA, 
+                   b_ess = NA, 
+                   b_f = 0,
+                   redraws = redraws))
+      }
       
       # Impute Se
       obs_data <- impute_missing_se(obs_data, target_theta_col = "O1_yi", target_se_col = "O1_sei", n_col = "n_total")
@@ -139,7 +167,8 @@ function_to_create <- function(scenario_idx) {
                         biv_ci_u = adj_biv["ci_u"],
                         u_ess = adj_uni["ess"], 
                         b_ess = adj_biv["ess"], 
-                        b_f = adj_biv["fail"]))
+                        b_f = adj_biv["fail"],
+                        redraws = redraws))
     }, error = function(e) return(NULL))
   })
   
@@ -176,7 +205,8 @@ res_df <- do.call(rbind, replicates)
     CI_Width_Biv   = mean(res_df$biv_ci_u - res_df$biv_ci_l, na.rm=TRUE),
     Avg_ESS_Biv    = mean(res_df$b_ess, na.rm=TRUE),
     
-    Fail_Rate_Biv  = mean(res_df$b_f, na.rm=TRUE)
+    Fail_Rate_Biv  = mean(res_df$b_f, na.rm=TRUE),
+    Avg_Redraws    = mean(res_df$redraws, na.rm=TRUE)
   )
 }
 
